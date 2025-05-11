@@ -84,6 +84,10 @@ __decorate([
     __metadata("design:type", Object)
 ], Vehicle.prototype, "insuranceExpiryDate", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'technical_revision_expiry_date', type: 'date', nullable: true }),
+    __metadata("design:type", Object)
+], Vehicle.prototype, "technicalRevisionExpiryDate", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
 ], Vehicle.prototype, "notes", void 0);
@@ -92,10 +96,20 @@ __decorate([
     __metadata("design:type", Object)
 ], Vehicle.prototype, "imagePath", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true }),
-    (0, typeorm_1.JoinColumn)({ name: 'responsible_user_id' }),
-    __metadata("design:type", User_1.User)
-], Vehicle.prototype, "responsibleUser", void 0);
+    (0, typeorm_1.ManyToMany)(() => User_1.User, user => user.vehicles),
+    (0, typeorm_1.JoinTable)({
+        name: 'vehicle_responsibles',
+        joinColumn: {
+            name: 'vehicle_id',
+            referencedColumnName: 'id'
+        },
+        inverseJoinColumn: {
+            name: 'user_id',
+            referencedColumnName: 'id'
+        }
+    }),
+    __metadata("design:type", Array)
+], Vehicle.prototype, "responsibleUsers", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)

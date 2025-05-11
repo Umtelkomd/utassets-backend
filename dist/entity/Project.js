@@ -19,10 +19,6 @@ __decorate([
     __metadata("design:type", Number)
 ], Project.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'project_code', type: 'varchar', unique: true }),
-    __metadata("design:type", String)
-], Project.prototype, "projectCode", void 0);
-__decorate([
     (0, typeorm_1.Column)({ type: 'varchar' }),
     __metadata("design:type", String)
 ], Project.prototype, "name", void 0);
@@ -30,6 +26,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
 ], Project.prototype, "description", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar' }),
+    __metadata("design:type", String)
+], Project.prototype, "location", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'start_date', type: 'date' }),
     __metadata("design:type", Date)

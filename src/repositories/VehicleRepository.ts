@@ -14,6 +14,7 @@ interface VehicleCreateDTO {
     mileage?: number | null;
     fuelType: FuelType;
     insuranceExpiryDate?: Date | null;
+    technicalRevisionExpiryDate?: Date | null;
     notes?: string | null;
     imagePath?: string | null;
     responsibleUsers?: User[];
@@ -38,6 +39,7 @@ export class VehicleRepository extends Repository<Vehicle> {
             mileage: vehicle.mileage || null,
             fuelType: vehicle.fuelType,
             insuranceExpiryDate: vehicle.insuranceExpiryDate || null,
+            technicalRevisionExpiryDate: vehicle.technicalRevisionExpiryDate || null,
             notes: vehicle.notes || null,
             imagePath: vehicle.imagePath || null,
             responsibleUsers: vehicle.responsibleUsers || []
@@ -102,6 +104,7 @@ export class VehicleRepository extends Repository<Vehicle> {
         if (vehicle.mileage !== undefined) existingVehicle.mileage = vehicle.mileage;
         if (vehicle.fuelType !== undefined) existingVehicle.fuelType = vehicle.fuelType;
         if (vehicle.insuranceExpiryDate !== undefined) existingVehicle.insuranceExpiryDate = vehicle.insuranceExpiryDate;
+        if (vehicle.technicalRevisionExpiryDate !== undefined) existingVehicle.technicalRevisionExpiryDate = vehicle.technicalRevisionExpiryDate;
         if (vehicle.notes !== undefined) existingVehicle.notes = vehicle.notes;
         if (vehicle.imagePath !== undefined) existingVehicle.imagePath = vehicle.imagePath;
 

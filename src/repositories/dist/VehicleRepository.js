@@ -76,6 +76,7 @@ var VehicleRepository = /** @class */ (function (_super) {
                             mileage: vehicle.mileage || null,
                             fuelType: vehicle.fuelType,
                             insuranceExpiryDate: vehicle.insuranceExpiryDate || null,
+                            technicalRevisionExpiryDate: vehicle.technicalRevisionExpiryDate || null,
                             notes: vehicle.notes || null,
                             imagePath: vehicle.imagePath || null,
                             responsibleUsers: vehicle.responsibleUsers || []
@@ -180,6 +181,8 @@ var VehicleRepository = /** @class */ (function (_super) {
                             existingVehicle.fuelType = vehicle.fuelType;
                         if (vehicle.insuranceExpiryDate !== undefined)
                             existingVehicle.insuranceExpiryDate = vehicle.insuranceExpiryDate;
+                        if (vehicle.technicalRevisionExpiryDate !== undefined)
+                            existingVehicle.technicalRevisionExpiryDate = vehicle.technicalRevisionExpiryDate;
                         if (vehicle.notes !== undefined)
                             existingVehicle.notes = vehicle.notes;
                         if (vehicle.imagePath !== undefined)

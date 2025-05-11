@@ -3,9 +3,9 @@ import { AppDataSource } from '../config/data-source';
 import { Project } from '../entity/Project';
 
 interface ProjectCreateDTO {
-    projectCode: string;
     name: string;
     description?: string | null;
+    location: string;
     startDate: Date;
     endDate?: Date | null;
     status: string;
@@ -20,9 +20,9 @@ export class ProjectRepository extends Repository<Project> {
 
     async createProject(project: ProjectCreateDTO): Promise<Project> {
         const newProject = this.create({
-            projectCode: project.projectCode,
             name: project.name,
             description: project.description || null,
+            location: project.location,
             startDate: project.startDate,
             endDate: project.endDate || null,
             status: project.status
@@ -45,12 +45,6 @@ export class ProjectRepository extends Repository<Project> {
         });
     }
 
-    async getProjectByCode(projectCode: string): Promise<Project | null> {
-        return await this.findOne({
-            where: { projectCode }
-        });
-    }
-
     async updateProject(id: number, project: ProjectUpdateDTO): Promise<Project | null> {
         const existingProject = await this.findOne({
             where: { id }
@@ -61,9 +55,9 @@ export class ProjectRepository extends Repository<Project> {
         }
 
         // Actualizar propiedades si existen en el DTO
-        if (project.projectCode !== undefined) existingProject.projectCode = project.projectCode;
         if (project.name !== undefined) existingProject.name = project.name;
         if (project.description !== undefined) existingProject.description = project.description;
+        if (project.location !== undefined) existingProject.location = project.location;
         if (project.startDate !== undefined) existingProject.startDate = project.startDate;
         if (project.endDate !== undefined) existingProject.endDate = project.endDate;
         if (project.status !== undefined) existingProject.status = project.status;

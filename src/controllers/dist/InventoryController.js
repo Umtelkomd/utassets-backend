@@ -54,6 +54,7 @@ var path_1 = require("path");
 var data_source_1 = require("../config/data-source");
 var User_1 = require("../entity/User");
 var typeorm_1 = require("typeorm");
+var UserRepository_1 = require("../repositories/UserRepository");
 var InventoryController = /** @class */ (function () {
     function InventoryController() {
     }
@@ -190,12 +191,13 @@ var InventoryController = /** @class */ (function () {
         });
     };
     InventoryController.prototype.getItem = function (req, res) {
+        var _a;
         return __awaiter(this, void 0, Promise, function () {
-            var id, item, error_3;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+            var id, item, itemWithFilteredResponsibles, error_3;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
-                        _a.trys.push([0, 2, , 3]);
+                        _b.trys.push([0, 2, , 3]);
                         id = parseInt(req.params.id, 10);
                         if (isNaN(id)) {
                             res.status(400).json({ message: 'ID de item inválido' });
@@ -203,15 +205,23 @@ var InventoryController = /** @class */ (function () {
                         }
                         return [4 /*yield*/, InventoryRepository_1.inventoryRepository.getItemById(id)];
                     case 1:
-                        item = _a.sent();
+                        item = _b.sent();
                         if (!item) {
                             res.status(404).json({ message: 'Item no encontrado' });
                             return [2 /*return*/];
                         }
-                        res.status(200).json(item);
+                        itemWithFilteredResponsibles = __assign(__assign({}, item), { responsibleUsers: ((_a = item.responsibleUsers) === null || _a === void 0 ? void 0 : _a.map(function (user) { return ({
+                                id: user.id,
+                                username: user.username,
+                                email: user.email,
+                                fullName: user.fullName,
+                                role: user.role,
+                                isActive: user.isActive
+                            }); })) || [] });
+                        res.status(200).json(itemWithFilteredResponsibles);
                         return [3 /*break*/, 3];
                     case 2:
-                        error_3 = _a.sent();
+                        error_3 = _b.sent();
                         console.error(error_3);
                         res.status(500).json({ message: 'Error al obtener el item', error: error_3.message });
                         return [3 /*break*/, 3];
@@ -222,13 +232,16 @@ var InventoryController = /** @class */ (function () {
     };
     InventoryController.prototype.updateItem = function (req, res) {
         return __awaiter(this, void 0, Promise, function () {
-            var id, item, file, existingItem, oldImagePath, updatedItem, error_4, filePath;
+            var id, item, file, existingItem, oldImagePath, userIds, users, updatedItem, error_4, filePath;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 3, , 4]);
+                        _a.trys.push([0, 7, , 8]);
                         id = parseInt(req.params.id, 10);
                         if (isNaN(id)) {
+                            if (req.file) {
+                                fs_1["default"].unlinkSync(req.file.path);
+                            }
                             res.status(400).json({ message: 'ID inválido' });
                             return [2 /*return*/];
                         }
@@ -256,18 +269,59 @@ var InventoryController = /** @class */ (function () {
                             // Solo guardar el nombre del archivo
                             item.imagePath = file.filename;
                         }
-                        return [4 /*yield*/, InventoryRepository_1.inventoryRepository.updateItem(id, item)];
+                        if (!item.responsibleUsers) return [3 /*break*/, 4];
+                        // Si es un string, intentar parsearlo como JSON
+                        if (typeof item.responsibleUsers === 'string') {
+                            try {
+                                item.responsibleUsers = JSON.parse(item.responsibleUsers);
+                            }
+                            catch (error) {
+                                if (file) {
+                                    fs_1["default"].unlinkSync(file.path);
+                                }
+                                res.status(400).json({
+                                    message: 'Formato inválido para usuarios responsables'
+                                });
+                                return [2 /*return*/];
+                            }
+                        }
+                        if (!Array.isArray(item.responsibleUsers)) return [3 /*break*/, 3];
+                        userIds = item.responsibleUsers.map(function (user) { return user.id; });
+                        return [4 /*yield*/, data_source_1.AppDataSource.getRepository(User_1.User).findBy({ id: typeorm_1.In(userIds) })];
                     case 2:
+                        users = _a.sent();
+                        if (users.length !== userIds.length) {
+                            if (file) {
+                                fs_1["default"].unlinkSync(file.path);
+                            }
+                            res.status(400).json({
+                                message: 'Uno o más usuarios responsables no existen'
+                            });
+                            return [2 /*return*/];
+                        }
+                        item.responsibleUsers = users;
+                        _a.label = 3;
+                    case 3: return [3 /*break*/, 5];
+                    case 4:
+                        if (item.responsibleUsers === null) {
+                            // Si se envía null, significa que se quieren eliminar todos los responsables
+                            item.responsibleUsers = [];
+                        }
+                        _a.label = 5;
+                    case 5: return [4 /*yield*/, InventoryRepository_1.inventoryRepository.updateItem(id, item)];
+                    case 6:
                         updatedItem = _a.sent();
                         if (!updatedItem) {
+                            if (file) {
+                                fs_1["default"].unlinkSync(file.path);
+                            }
                             res.status(404).json({ message: 'Item no encontrado' });
                             return [2 /*return*/];
                         }
                         res.status(200).json(updatedItem);
-                        return [3 /*break*/, 4];
-                    case 3:
+                        return [3 /*break*/, 8];
+                    case 7:
                         error_4 = _a.sent();
-                        console.error(error_4);
                         // Si hay un error y se subió un archivo, intentar eliminarlo
                         if (req.file) {
                             try {
@@ -281,9 +335,10 @@ var InventoryController = /** @class */ (function () {
                                 console.error('Error al eliminar archivo tras fallo:', err);
                             }
                         }
+                        console.error(error_4);
                         res.status(500).json({ message: 'Error al actualizar el item', error: error_4.message });
-                        return [3 /*break*/, 4];
-                    case 4: return [2 /*return*/];
+                        return [3 /*break*/, 8];
+                    case 8: return [2 /*return*/];
                 }
             });
         });
@@ -459,6 +514,146 @@ var InventoryController = /** @class */ (function () {
                         res.status(500).json({ message: 'Error al eliminar la imagen', error: error_7.message });
                         return [3 /*break*/, 4];
                     case 4: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    InventoryController.prototype.addResponsibleUser = function (req, res) {
+        return __awaiter(this, void 0, Promise, function () {
+            var itemId, userId_1, item, user, isAlreadyResponsible, error_8;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 4, , 5]);
+                        itemId = parseInt(req.params.id, 10);
+                        userId_1 = req.body.userId;
+                        if (isNaN(itemId) || !userId_1) {
+                            res.status(400).json({ message: 'ID de item y usuario requeridos' });
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, InventoryRepository_1.inventoryRepository.getItemById(itemId)];
+                    case 1:
+                        item = _a.sent();
+                        if (!item) {
+                            res.status(404).json({ message: 'Item no encontrado' });
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, UserRepository_1.userRepository.getUserById(userId_1)];
+                    case 2:
+                        user = _a.sent();
+                        if (!user) {
+                            res.status(404).json({ message: 'Usuario no encontrado' });
+                            return [2 /*return*/];
+                        }
+                        isAlreadyResponsible = item.responsibleUsers.some(function (u) { return u.id === userId_1; });
+                        if (isAlreadyResponsible) {
+                            res.status(400).json({ message: 'El usuario ya es responsable de este item' });
+                            return [2 /*return*/];
+                        }
+                        // Agregar el usuario como responsable
+                        item.responsibleUsers.push(user);
+                        return [4 /*yield*/, InventoryRepository_1.inventoryRepository.updateItem(itemId, { responsibleUsers: item.responsibleUsers })];
+                    case 3:
+                        _a.sent();
+                        res.status(200).json({
+                            message: 'Usuario agregado como responsable exitosamente',
+                            item: __assign(__assign({}, item), { responsibleUsers: item.responsibleUsers })
+                        });
+                        return [3 /*break*/, 5];
+                    case 4:
+                        error_8 = _a.sent();
+                        console.error('Error al agregar responsable:', error_8);
+                        res.status(500).json({
+                            message: 'Error en el servidor',
+                            error: error_8.message
+                        });
+                        return [3 /*break*/, 5];
+                    case 5: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    InventoryController.prototype.removeResponsibleUser = function (req, res) {
+        return __awaiter(this, void 0, Promise, function () {
+            var itemId, userId_2, item, userIndex, error_9;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 3, , 4]);
+                        itemId = parseInt(req.params.id, 10);
+                        userId_2 = req.body.userId;
+                        if (isNaN(itemId) || !userId_2) {
+                            res.status(400).json({ message: 'ID de item y usuario requeridos' });
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, InventoryRepository_1.inventoryRepository.getItemById(itemId)];
+                    case 1:
+                        item = _a.sent();
+                        if (!item) {
+                            res.status(404).json({ message: 'Item no encontrado' });
+                            return [2 /*return*/];
+                        }
+                        userIndex = item.responsibleUsers.findIndex(function (u) { return u.id === userId_2; });
+                        if (userIndex === -1) {
+                            res.status(400).json({ message: 'El usuario no es responsable de este item' });
+                            return [2 /*return*/];
+                        }
+                        // Remover el usuario de los responsables
+                        item.responsibleUsers.splice(userIndex, 1);
+                        return [4 /*yield*/, InventoryRepository_1.inventoryRepository.updateItem(itemId, { responsibleUsers: item.responsibleUsers })];
+                    case 2:
+                        _a.sent();
+                        res.status(200).json({
+                            message: 'Usuario removido como responsable exitosamente',
+                            item: __assign(__assign({}, item), { responsibleUsers: item.responsibleUsers })
+                        });
+                        return [3 /*break*/, 4];
+                    case 3:
+                        error_9 = _a.sent();
+                        console.error('Error al remover responsable:', error_9);
+                        res.status(500).json({
+                            message: 'Error en el servidor',
+                            error: error_9.message
+                        });
+                        return [3 /*break*/, 4];
+                    case 4: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    InventoryController.prototype.getResponsibleUsers = function (req, res) {
+        return __awaiter(this, void 0, Promise, function () {
+            var itemId, item, error_10;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        itemId = parseInt(req.params.id, 10);
+                        if (isNaN(itemId)) {
+                            res.status(400).json({ message: 'ID de item inválido' });
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, InventoryRepository_1.inventoryRepository.getItemById(itemId)];
+                    case 1:
+                        item = _a.sent();
+                        if (!item) {
+                            res.status(404).json({ message: 'Item no encontrado' });
+                            return [2 /*return*/];
+                        }
+                        res.status(200).json({
+                            message: 'Responsables del item obtenidos exitosamente',
+                            responsibleUsers: item.responsibleUsers
+                        });
+                        return [3 /*break*/, 3];
+                    case 2:
+                        error_10 = _a.sent();
+                        console.error('Error al obtener responsables:', error_10);
+                        res.status(500).json({
+                            message: 'Error en el servidor',
+                            error: error_10.message
+                        });
+                        return [3 /*break*/, 3];
+                    case 3: return [2 /*return*/];
                 }
             });
         });

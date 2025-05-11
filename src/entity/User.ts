@@ -1,6 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToMany, OneToMany } from 'typeorm';
 import { Vehicle } from './Vehicle';
 import { Inventory } from './Inventory';
+import { Report } from './Report';
+import { Comment } from './Comment';
 
 export enum UserRole {
     ADMIN = 'administrador',
@@ -34,6 +36,9 @@ export class User {
     @Column({ nullable: true, length: 20 })
     phone?: string;
 
+    @Column({ type: 'date', nullable: true })
+    birthDate?: Date;
+
     @Column({ default: true })
     isActive: boolean;
 
@@ -57,4 +62,10 @@ export class User {
 
     @ManyToMany(() => Inventory, inventory => inventory.responsibleUsers)
     inventories: Inventory[];
+
+    @OneToMany(() => Report, report => report.user)
+    reports: Report[];
+
+    @OneToMany(() => Comment, comment => comment.user)
+    comments: Comment[];
 } 

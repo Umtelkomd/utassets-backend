@@ -5,14 +5,14 @@ export class Project {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ name: 'project_code', type: 'varchar', unique: true })
-    projectCode: string;
-
     @Column({ type: 'varchar' })
     name: string;
 
     @Column({ type: 'text', nullable: true })
     description: string | null;
+
+    @Column({ type: 'varchar' })
+    location: string;
 
     @Column({ name: 'start_date', type: 'date' })
     startDate: Date;

@@ -85,7 +85,7 @@ var VehicleController = /** @class */ (function () {
                             });
                             return [2 /*return*/];
                         }
-                        optionalFields = ['vin', 'color', 'mileage', 'insuranceExpiryDate', 'notes'];
+                        optionalFields = ['vin', 'color', 'mileage', 'insuranceExpiryDate', 'technicalRevisionExpiryDate', 'notes'];
                         optionalFields.forEach(function (field) {
                             if (vehicle_1[field] === '' || vehicle_1[field] === undefined) {
                                 vehicle_1[field] = null;
@@ -124,6 +124,10 @@ var VehicleController = /** @class */ (function () {
                         // Convertir fecha a objeto Date si viene como string
                         if (typeof vehicle_1.insuranceExpiryDate === 'string' && vehicle_1.insuranceExpiryDate) {
                             vehicle_1.insuranceExpiryDate = new Date(vehicle_1.insuranceExpiryDate);
+                        }
+                        // Convertir fecha a objeto Date si viene como string
+                        if (typeof vehicle_1.technicalRevisionExpiryDate === 'string' && vehicle_1.technicalRevisionExpiryDate) {
+                            vehicle_1.technicalRevisionExpiryDate = new Date(vehicle_1.technicalRevisionExpiryDate);
                         }
                         if (!vehicle_1.licensePlate) return [3 /*break*/, 2];
                         return [4 /*yield*/, VehicleRepository_1.vehicleRepository.getVehicleByLicensePlate(vehicle_1.licensePlate)];
@@ -198,12 +202,9 @@ var VehicleController = /** @class */ (function () {
                             vehicle_1.responsibleUsers = [];
                         }
                         _a.label = 8;
-                    case 8:
-                        console.log('Creando vehículo:', vehicle_1);
-                        return [4 /*yield*/, VehicleRepository_1.vehicleRepository.createVehicle(vehicle_1)];
+                    case 8: return [4 /*yield*/, VehicleRepository_1.vehicleRepository.createVehicle(vehicle_1)];
                     case 9:
                         newVehicle = _a.sent();
-                        console.log('Vehículo creado:', newVehicle);
                         res.status(201).json({
                             message: 'Vehículo creado exitosamente',
                             vehicle: newVehicle
@@ -261,12 +262,13 @@ var VehicleController = /** @class */ (function () {
         });
     };
     VehicleController.prototype.getVehicle = function (req, res) {
+        var _a;
         return __awaiter(this, void 0, Promise, function () {
-            var id, vehicle, error_3;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+            var id, vehicle, vehicleWithFilteredResponsibles, error_3;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
-                        _a.trys.push([0, 2, , 3]);
+                        _b.trys.push([0, 2, , 3]);
                         id = parseInt(req.params.id, 10);
                         if (isNaN(id)) {
                             res.status(400).json({ message: 'ID de vehículo inválido' });
@@ -274,15 +276,23 @@ var VehicleController = /** @class */ (function () {
                         }
                         return [4 /*yield*/, VehicleRepository_1.vehicleRepository.getVehicleById(id)];
                     case 1:
-                        vehicle = _a.sent();
+                        vehicle = _b.sent();
                         if (!vehicle) {
                             res.status(404).json({ message: 'Vehículo no encontrado' });
                             return [2 /*return*/];
                         }
-                        res.status(200).json(vehicle);
+                        vehicleWithFilteredResponsibles = __assign(__assign({}, vehicle), { responsibleUsers: ((_a = vehicle.responsibleUsers) === null || _a === void 0 ? void 0 : _a.map(function (user) { return ({
+                                id: user.id,
+                                username: user.username,
+                                email: user.email,
+                                fullName: user.fullName,
+                                role: user.role,
+                                isActive: user.isActive
+                            }); })) || [] });
+                        res.status(200).json(vehicleWithFilteredResponsibles);
                         return [3 /*break*/, 3];
                     case 2:
-                        error_3 = _a.sent();
+                        error_3 = _b.sent();
                         console.error(error_3);
                         res.status(500).json({ message: 'Error al obtener el vehículo', error: error_3.message });
                         return [3 /*break*/, 3];
@@ -355,6 +365,10 @@ var VehicleController = /** @class */ (function () {
                         // Convertir fecha a objeto Date si viene como string
                         if (typeof vehicle.insuranceExpiryDate === 'string' && vehicle.insuranceExpiryDate) {
                             vehicle.insuranceExpiryDate = new Date(vehicle.insuranceExpiryDate);
+                        }
+                        // Convertir fecha a objeto Date si viene como string
+                        if (typeof vehicle.technicalRevisionExpiryDate === 'string' && vehicle.technicalRevisionExpiryDate) {
+                            vehicle.technicalRevisionExpiryDate = new Date(vehicle.technicalRevisionExpiryDate);
                         }
                         if (!vehicle.licensePlate) return [3 /*break*/, 3];
                         return [4 /*yield*/, VehicleRepository_1.vehicleRepository.getVehicleByLicensePlate(vehicle.licensePlate)];

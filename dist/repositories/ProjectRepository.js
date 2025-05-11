@@ -10,9 +10,9 @@ class ProjectRepository extends typeorm_1.Repository {
     }
     async createProject(project) {
         const newProject = this.create({
-            projectCode: project.projectCode,
             name: project.name,
             description: project.description || null,
+            location: project.location,
             startDate: project.startDate,
             endDate: project.endDate || null,
             status: project.status
@@ -31,11 +31,6 @@ class ProjectRepository extends typeorm_1.Repository {
             where: { id }
         });
     }
-    async getProjectByCode(projectCode) {
-        return await this.findOne({
-            where: { projectCode }
-        });
-    }
     async updateProject(id, project) {
         const existingProject = await this.findOne({
             where: { id }
@@ -44,12 +39,12 @@ class ProjectRepository extends typeorm_1.Repository {
             return null;
         }
         // Actualizar propiedades si existen en el DTO
-        if (project.projectCode !== undefined)
-            existingProject.projectCode = project.projectCode;
         if (project.name !== undefined)
             existingProject.name = project.name;
         if (project.description !== undefined)
             existingProject.description = project.description;
+        if (project.location !== undefined)
+            existingProject.location = project.location;
         if (project.startDate !== undefined)
             existingProject.startDate = project.startDate;
         if (project.endDate !== undefined)

@@ -4,6 +4,7 @@ exports.inventoryRepository = exports.InventoryRepository = void 0;
 const typeorm_1 = require("typeorm");
 const data_source_1 = require("../config/data-source");
 const Inventory_1 = require("../entity/Inventory");
+const User_1 = require("../entity/User");
 class InventoryRepository extends typeorm_1.Repository {
     constructor() {
         super(Inventory_1.Inventory, data_source_1.AppDataSource.createEntityManager());
@@ -19,14 +20,17 @@ class InventoryRepository extends typeorm_1.Repository {
             acquisitionDate: item.acquisitionDate || null,
             lastMaintenanceDate: item.lastMaintenanceDate || null,
             nextMaintenanceDate: item.nextMaintenanceDate || null,
-            responsiblePerson: item.responsiblePerson || null,
             notes: item.notes || null,
-            imagePath: item.imagePath || null
+            imagePath: item.imagePath || null,
+            responsibleUsers: item.responsibleUsers || []
         });
         return await this.save(newItem);
     }
     async getAllItems() {
         return await this.find({
+            relations: {
+                responsibleUsers: true
+            },
             order: {
                 createdAt: 'DESC'
             }
@@ -34,46 +38,35 @@ class InventoryRepository extends typeorm_1.Repository {
     }
     async getItemById(id) {
         return await this.findOne({
-            where: { id }
+            where: { id },
+            relations: {
+                responsibleUsers: true
+            }
         });
     }
     async updateItem(id, item) {
         const existingItem = await this.findOne({
-            where: { id }
+            where: { id },
+            relations: {
+                responsibleUsers: true
+            }
         });
         if (!existingItem) {
             return null;
         }
-        // Actualizar propiedades si existen en el DTO
-        if (item.itemName !== undefined)
-            existingItem.itemName = item.itemName;
-        if (item.itemCode !== undefined)
-            existingItem.itemCode = item.itemCode;
-        if (item.category !== undefined)
-            existingItem.category = item.category;
-        if (item.quantity !== undefined)
-            existingItem.quantity = item.quantity;
-        if (item.condition !== undefined)
-            existingItem.condition = item.condition;
-        if (item.location !== undefined)
-            existingItem.location = item.location;
-        if (item.acquisitionDate !== undefined)
-            existingItem.acquisitionDate = item.acquisitionDate;
-        if (item.lastMaintenanceDate !== undefined)
-            existingItem.lastMaintenanceDate = item.lastMaintenanceDate;
-        if (item.nextMaintenanceDate !== undefined)
-            existingItem.nextMaintenanceDate = item.nextMaintenanceDate;
-        if (item.responsiblePerson !== undefined)
-            existingItem.responsiblePerson = item.responsiblePerson;
-        if (item.notes !== undefined)
-            existingItem.notes = item.notes;
-        if (item.imagePath !== undefined)
-            existingItem.imagePath = item.imagePath;
+        if (item.responsibleUsers !== undefined) {
+            // Cargar los usuarios completos desde la base de datos
+            const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
+            const users = await userRepository.findByIds(item.responsibleUsers.map(u => u.id));
+            existingItem.responsibleUsers = users;
+        }
+        Object.assign(existingItem, item);
         return await this.save(existingItem);
     }
     async deleteItem(id) {
         const itemToRemove = await this.findOne({
-            where: { id }
+            where: { id },
+            relations: ['responsibleUsers']
         });
         if (!itemToRemove) {
             return null;

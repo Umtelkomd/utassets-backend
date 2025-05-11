@@ -1,83 +1,66 @@
 import 'reflect-metadata';
-import express, { Request, Response } from 'express';
-import path from 'path';
+import express from 'express';
 import cors from 'cors';
-import { initialize } from './config/data-source';
-import dotenv from 'dotenv';
-import fs from 'fs';
-
-// Cargar variables de entorno
-dotenv.config();
-
-// Importar rutas
+import { AppDataSource } from './config/data-source';
+import authRoutes from './routes/AuthRoutes';
 import userRoutes from './routes/userRoutes';
 import vehicleRoutes from './routes/VehicleRoutes';
-import authRoutes from './routes/AuthRoutes';
 import inventoryRoutes from './routes/InventoryRoutes';
-import categoryRoutes from './routes/CategoryRoutes';
 import projectRoutes from './routes/ProjectRoutes';
-import maintenanceRoutes from './routes/MaintenanceRoutes';
+import inventoryProjectRoutes from './routes/InventoryProjectRoutes';
+import categoryRoutes from './routes/CategoryRoutes';
 import movementRoutes from './routes/MovementRoutes';
+import maintenanceRoutes from './routes/MaintenanceRoutes';
+import reportRoutes from './routes/ReportRoutes';
+import commentRoutes from './routes/CommentRoutes';
+import path from 'path';
+import './scripts/initDirectories';
 
 const app = express();
-
-// Configuración de CORS
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-}));
-
-// Middleware
-app.use(express.json());
-
-// Crear directorios necesarios si no existen
-const uploadDirs = ['uploads/users', 'uploads/vehicles'];
-uploadDirs.forEach(dir => {
-    const fullPath = path.join(__dirname, '..', dir);
-    if (!fs.existsSync(fullPath)) {
-        fs.mkdirSync(fullPath, { recursive: true });
-    }
-});
-
-// Servir archivos estáticos desde la carpeta uploads
-app.use('/api/uploads', express.static('uploads'));
-
-// Configurar rutas
-app.use('/api/users', userRoutes);
-app.use('/api/vehicles', vehicleRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/maintenance', maintenanceRoutes);
-app.use('/api/movements', movementRoutes);
-
-// Rutas de prueba
-app.get('/', (_req: Request, res: Response) => {
-    res.send('API funcionando correctamente');
-});
-
-app.get('/api', (_req: Request, res: Response) => {
-    res.send('API funcionando correctamente');
-});
-
-// Usar un puerto diferente para evitar conflictos
 const PORT = process.env.PORT || 5050;
 
-// Inicializar TypeORM y luego iniciar el servidor
-const startServer = async (): Promise<void> => {
-    try {
-        await initialize(); // Inicializar la conexión TypeORM
+// Configuración de CORS mejorada
+app.use(cors({
+    origin: '*', // Permite cualquier origen
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'Access-Control-Allow-Origin'],
+    exposedHeaders: ['Content-Length', 'X-Requested-With', 'Authorization'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+}));
 
+// Middleware adicional para OPTIONS requests (preflight)
+app.options('*', cors());
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Servir archivos estáticos
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/uploads/users', express.static(path.join(__dirname, '..', 'uploads', 'users')));
+app.use('/uploads/vehicles', express.static(path.join(__dirname, '..', 'uploads', 'vehicles')));
+app.use('/uploads/inventory', express.static(path.join(__dirname, '..', 'uploads', 'inventory')));
+
+// Rutas
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/vehicles', vehicleRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/inventory-projects', inventoryProjectRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/movements', movementRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/comments', commentRoutes);
+
+// Inicializar la base de datos y el servidor
+AppDataSource.initialize()
+    .then(() => {
+        console.log('Base de datos conectada');
         app.listen(PORT, () => {
-            console.log(`Servidor corriendo en puerto ${PORT}`);
+            console.log(`Servidor corriendo en el puerto ${PORT}`);
         });
-    } catch (error) {
-        console.error('Error al iniciar el servidor:', error);
-        process.exit(1);
-    }
-};
-
-startServer(); 
+    })
+    .catch((error) => console.log('Error al conectar con la base de datos:', error)); 

@@ -36,7 +36,7 @@ export class VehicleController {
             }
 
             // Convertir campos opcionales vacíos a null
-            const optionalFields = ['vin', 'color', 'mileage', 'insuranceExpiryDate', 'notes'];
+            const optionalFields = ['vin', 'color', 'mileage', 'insuranceExpiryDate', 'technicalRevisionExpiryDate', 'notes'];
             optionalFields.forEach((field) => {
                 if (vehicle[field] === '' || vehicle[field] === undefined) {
                     vehicle[field] = null;
@@ -80,6 +80,11 @@ export class VehicleController {
             // Convertir fecha a objeto Date si viene como string
             if (typeof vehicle.insuranceExpiryDate === 'string' && vehicle.insuranceExpiryDate) {
                 vehicle.insuranceExpiryDate = new Date(vehicle.insuranceExpiryDate);
+            }
+
+            // Convertir fecha a objeto Date si viene como string
+            if (typeof vehicle.technicalRevisionExpiryDate === 'string' && vehicle.technicalRevisionExpiryDate) {
+                vehicle.technicalRevisionExpiryDate = new Date(vehicle.technicalRevisionExpiryDate);
             }
 
             // Verificar si ya existe un vehículo con la misma placa o VIN
@@ -152,9 +157,7 @@ export class VehicleController {
                 vehicle.responsibleUsers = [];
             }
 
-            console.log('Creando vehículo:', vehicle);
             const newVehicle = await vehicleRepository.createVehicle(vehicle);
-            console.log('Vehículo creado:', newVehicle);
 
             res.status(201).json({
                 message: 'Vehículo creado exitosamente',
@@ -209,7 +212,20 @@ export class VehicleController {
                 return;
             }
 
-            res.status(200).json(vehicle);
+            // Filtrar la información de los usuarios responsables
+            const vehicleWithFilteredResponsibles = {
+                ...vehicle,
+                responsibleUsers: vehicle.responsibleUsers?.map(user => ({
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    fullName: user.fullName,
+                    role: user.role,
+                    isActive: user.isActive
+                })) || []
+            };
+
+            res.status(200).json(vehicleWithFilteredResponsibles);
         } catch (error) {
             console.error(error);
             res.status(500).json({ message: 'Error al obtener el vehículo', error: (error as Error).message });
@@ -282,6 +298,11 @@ export class VehicleController {
             // Convertir fecha a objeto Date si viene como string
             if (typeof vehicle.insuranceExpiryDate === 'string' && vehicle.insuranceExpiryDate) {
                 vehicle.insuranceExpiryDate = new Date(vehicle.insuranceExpiryDate);
+            }
+
+            // Convertir fecha a objeto Date si viene como string
+            if (typeof vehicle.technicalRevisionExpiryDate === 'string' && vehicle.technicalRevisionExpiryDate) {
+                vehicle.technicalRevisionExpiryDate = new Date(vehicle.technicalRevisionExpiryDate);
             }
 
             // Verificar si ya existe otro vehículo con la misma placa o VIN

@@ -47,13 +47,15 @@ var Category_1 = require("../entity/Category");
 var InventoryProject_1 = require("../entity/InventoryProject");
 var Project_1 = require("../entity/Project");
 var Maintenance_1 = require("../entity/Maintenance");
+var Report_1 = require("../entity/Report");
+var Comment_1 = require("../entity/Comment");
 exports.AppDataSource = new typeorm_1.DataSource({
-    type: "postgres",
+    type: "mysql",
     host: process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.DB_PORT || "5432"),
-    username: process.env.DB_USERNAME || "postgres",
-    password: process.env.DB_PASSWORD || "postgres",
-    database: process.env.DB_DATABASE || "panda_assets",
+    port: parseInt(process.env.DB_PORT || "3306"),
+    username: process.env.DB_USERNAME || "u743347598_utassets",
+    password: process.env.DB_PASSWORD || "YourStrongPassword123",
+    database: process.env.DB_DATABASE || "u743347598_utassets",
     synchronize: true,
     logging: true,
     entities: [
@@ -64,11 +66,13 @@ exports.AppDataSource = new typeorm_1.DataSource({
         Category_1.Category,
         InventoryProject_1.InventoryProject,
         Project_1.Project,
-        Maintenance_1.Maintenance
+        Maintenance_1.Maintenance,
+        Report_1.Report,
+        Comment_1.Comment
     ],
     migrations: [],
     subscribers: [],
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    charset: "utf8mb4"
 });
 exports.initialize = function () { return __awaiter(void 0, void 0, Promise, function () {
     var error_1;
@@ -80,7 +84,7 @@ exports.initialize = function () { return __awaiter(void 0, void 0, Promise, fun
                 return [4 /*yield*/, exports.AppDataSource.initialize()];
             case 1:
                 _a.sent();
-                console.log('Base de datos conectada con TypeORM');
+                console.log('Base de datos MySQL conectada con TypeORM');
                 _a.label = 2;
             case 2: return [3 /*break*/, 4];
             case 3:

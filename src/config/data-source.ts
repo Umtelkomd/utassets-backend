@@ -8,15 +8,17 @@ import { Category } from '../entity/Category';
 import { InventoryProject } from '../entity/InventoryProject';
 import { Project } from '../entity/Project';
 import { Maintenance } from '../entity/Maintenance';
+import { Report } from '../entity/Report';
+import { Comment } from '../entity/Comment';
 
 export const AppDataSource = new DataSource({
-    type: "postgres",
+    type: "mysql",
     host: process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.DB_PORT || "5432"),
-    username: process.env.DB_USERNAME || "postgres",
-    password: process.env.DB_PASSWORD || "postgres",
-    database: process.env.DB_DATABASE || "panda_assets",
-    synchronize: true, // Habilitar sincronización automática
+    port: parseInt(process.env.DB_PORT || "3306"),
+    username: process.env.DB_USERNAME || "u743347598_utassets",
+    password: process.env.DB_PASSWORD || "YourStrongPassword123",
+    database: process.env.DB_DATABASE || "u743347598_utassets",
+    synchronize: true,
     logging: true,
     entities: [
         User,
@@ -26,18 +28,20 @@ export const AppDataSource = new DataSource({
         Category,
         InventoryProject,
         Project,
-        Maintenance
+        Maintenance,
+        Report,
+        Comment
     ],
     migrations: [],
     subscribers: [],
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    charset: "utf8mb4",
 })
 
 export const initialize = async (): Promise<void> => {
     try {
         if (!AppDataSource.isInitialized) {
             await AppDataSource.initialize();
-            console.log('Base de datos conectada con TypeORM');
+            console.log('Base de datos MySQL conectada con TypeORM');
         }
     } catch (error) {
         console.error('Error al conectar la base de datos:', error);

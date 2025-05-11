@@ -53,4 +53,9 @@ router.delete('/:id', authMiddleware, inventoryController.deleteItem);
 router.post('/:id/image', authMiddleware, upload.single('image'), inventoryController.updateItemImage);
 router.delete('/:id/image', authMiddleware, inventoryController.deleteItemImage);
 
+// Rutas para usuarios responsables
+router.post('/:id/responsibles', authMiddleware, inventoryController.addResponsibleUser);
+router.delete('/:id/responsibles', authMiddleware, inventoryController.removeResponsibleUser);
+router.get('/:id/responsibles', authMiddleware, inventoryController.getResponsibleUsers);
+
 export default router;

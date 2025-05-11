@@ -60,6 +60,9 @@ export class Vehicle {
     @Column({ name: 'insurance_expiry_date', type: 'date', nullable: true })
     insuranceExpiryDate: Date | null;
 
+    @Column({ name: 'technical_revision_expiry_date', type: 'date', nullable: true })
+    technicalRevisionExpiryDate: Date | null;
+
     @Column({ type: 'text', nullable: true })
     notes: string | null;
 

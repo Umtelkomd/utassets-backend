@@ -4,6 +4,7 @@ exports.vehicleRepository = exports.VehicleRepository = void 0;
 const typeorm_1 = require("typeorm");
 const data_source_1 = require("../config/data-source");
 const Vehicle_1 = require("../entity/Vehicle");
+const User_1 = require("../entity/User");
 class VehicleRepository extends typeorm_1.Repository {
     constructor() {
         super(Vehicle_1.Vehicle, data_source_1.AppDataSource.createEntityManager());
@@ -20,12 +21,18 @@ class VehicleRepository extends typeorm_1.Repository {
             mileage: vehicle.mileage || null,
             fuelType: vehicle.fuelType,
             insuranceExpiryDate: vehicle.insuranceExpiryDate || null,
-            notes: vehicle.notes || null
+            technicalRevisionExpiryDate: vehicle.technicalRevisionExpiryDate || null,
+            notes: vehicle.notes || null,
+            imagePath: vehicle.imagePath || null,
+            responsibleUsers: vehicle.responsibleUsers || []
         });
         return await this.save(newVehicle);
     }
     async getAllVehicles() {
         return await this.find({
+            relations: {
+                responsibleUsers: true
+            },
             order: {
                 brand: 'ASC',
                 model: 'ASC'
@@ -34,7 +41,10 @@ class VehicleRepository extends typeorm_1.Repository {
     }
     async getVehicleById(id) {
         return await this.findOne({
-            where: { id }
+            where: { id },
+            relations: {
+                responsibleUsers: true
+            }
         });
     }
     async getVehicleByLicensePlate(licensePlate) {
@@ -49,7 +59,10 @@ class VehicleRepository extends typeorm_1.Repository {
     }
     async updateVehicle(id, vehicle) {
         const existingVehicle = await this.findOne({
-            where: { id }
+            where: { id },
+            relations: {
+                responsibleUsers: true
+            }
         });
         if (!existingVehicle) {
             return null;
@@ -75,8 +88,19 @@ class VehicleRepository extends typeorm_1.Repository {
             existingVehicle.fuelType = vehicle.fuelType;
         if (vehicle.insuranceExpiryDate !== undefined)
             existingVehicle.insuranceExpiryDate = vehicle.insuranceExpiryDate;
+        if (vehicle.technicalRevisionExpiryDate !== undefined)
+            existingVehicle.technicalRevisionExpiryDate = vehicle.technicalRevisionExpiryDate;
         if (vehicle.notes !== undefined)
             existingVehicle.notes = vehicle.notes;
+        if (vehicle.imagePath !== undefined)
+            existingVehicle.imagePath = vehicle.imagePath;
+        // Manejar la actualización de usuarios responsables
+        if (vehicle.responsibleUsers !== undefined) {
+            // Cargar los usuarios completos desde la base de datos
+            const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
+            const users = await userRepository.findByIds(vehicle.responsibleUsers.map(u => u.id));
+            existingVehicle.responsibleUsers = users;
+        }
         return await this.save(existingVehicle);
     }
     async deleteVehicle(id) {

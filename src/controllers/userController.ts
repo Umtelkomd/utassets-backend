@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { getRepository } from 'typeorm';
 import { User } from '../entity/User';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
@@ -13,7 +12,22 @@ export class UserController {
 
     async createUser(req: Request, res: Response) {
         try {
-            const { username, email, password, fullName, phone, role } = req.body;
+            // Extraer datos del FormData
+            const { username, email, password, fullName, role, birthDate } = req.body;
+            const file = req.file;
+
+            console.log('backend', req, res)
+
+            // Validar campos requeridos
+            if (!username || !email || !password || !fullName) {
+                // Si hay una imagen y hay error, eliminarla
+                if (file) {
+                    fs.unlinkSync(file.path);
+                }
+                return res.status(400).json({
+                    message: 'Faltan campos requeridos: username, email, password o fullName'
+                });
+            }
 
             // Verificar si el usuario o email ya existen
             const existingUser = await this.userRepository.findOne({
@@ -24,6 +38,10 @@ export class UserController {
             });
 
             if (existingUser) {
+                // Si hay una imagen y hay error, eliminarla
+                if (file) {
+                    fs.unlinkSync(file.path);
+                }
                 return res.status(400).json({ message: 'El usuario o email ya existe' });
             }
 
@@ -36,9 +54,10 @@ export class UserController {
                 email,
                 password: hashedPassword,
                 fullName,
-                phone,
                 role: role || UserRole.TECH,
-                isActive: true
+                birthDate: birthDate ? new Date(birthDate) : undefined,
+                isActive: true,
+                imagePath: file ? file.filename : null
             });
 
             // Guardar el usuario
@@ -47,8 +66,23 @@ export class UserController {
             // Eliminar la contraseña del objeto de respuesta
             const { password: _, ...userWithoutPassword } = user;
 
-            res.status(201).json(userWithoutPassword);
+            // Generar token
+            if (!process.env.JWT_SECRET) {
+                throw new Error('JWT_SECRET no está definido');
+            }
+
+            const token = jwt.sign(
+                { id: user.id, email: user.email, role: user.role },
+                process.env.JWT_SECRET,
+                { expiresIn: '1h' }
+            );
+
+            res.status(201).json({ user: userWithoutPassword, token });
         } catch (error) {
+            // Si hay una imagen y hay error, eliminarla
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
             console.error('Error al crear usuario:', error);
             res.status(500).json({ message: 'Error al crear usuario' });
         }

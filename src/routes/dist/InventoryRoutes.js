@@ -48,4 +48,8 @@ router["delete"]('/:id', authMiddleware_1.authMiddleware, InventoryController_1.
 // Rutas específicas para imágenes
 router.post('/:id/image', authMiddleware_1.authMiddleware, upload.single('image'), InventoryController_1.inventoryController.updateItemImage);
 router["delete"]('/:id/image', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.deleteItemImage);
+// Rutas para usuarios responsables
+router.post('/:id/responsibles', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.addResponsibleUser);
+router["delete"]('/:id/responsibles', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.removeResponsibleUser);
+router.get('/:id/responsibles', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.getResponsibleUsers);
 exports["default"] = router;

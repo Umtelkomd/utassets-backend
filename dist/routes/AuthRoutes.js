@@ -6,10 +6,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const AuthController_1 = require("../controllers/AuthController");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
+const uploadMiddleware_1 = require("../middlewares/uploadMiddleware");
 const router = express_1.default.Router();
 // Rutas públicas
 router.post('/login', AuthController_1.authController.login.bind(AuthController_1.authController));
-router.post('/register', AuthController_1.authController.register.bind(AuthController_1.authController));
+router.post('/register', uploadMiddleware_1.upload.single('image'), AuthController_1.authController.register.bind(AuthController_1.authController));
 // Rutas protegidas que requieren autenticación
 router.get('/me', authMiddleware_1.authMiddleware, AuthController_1.authController.getCurrentUser.bind(AuthController_1.authController));
 router.post('/change-password', authMiddleware_1.authMiddleware, AuthController_1.authController.changePassword.bind(AuthController_1.authController));

@@ -8,6 +8,7 @@ const VehicleController_1 = require("../controllers/VehicleController");
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+const authMiddleware_1 = require("../middlewares/authMiddleware");
 const router = (0, express_1.Router)();
 // Configurar multer para la subida de imágenes
 const storage = multer_1.default.diskStorage({
@@ -42,9 +43,16 @@ const upload = (0, multer_1.default)({
     }
 });
 // Rutas para vehículos
-router.post('/', upload.single('image'), VehicleController_1.vehicleController.createVehicle);
-router.get('/', VehicleController_1.vehicleController.getAllVehicles);
-router.get('/:id', VehicleController_1.vehicleController.getVehicle);
-router.put('/:id', upload.single('image'), VehicleController_1.vehicleController.updateVehicle);
-router.delete('/:id', VehicleController_1.vehicleController.deleteVehicle);
+router.post('/', authMiddleware_1.authMiddleware, upload.single('image'), VehicleController_1.vehicleController.createVehicle);
+router.get('/', authMiddleware_1.authMiddleware, VehicleController_1.vehicleController.getAllVehicles);
+router.get('/:id', authMiddleware_1.authMiddleware, VehicleController_1.vehicleController.getVehicle);
+router.put('/:id', authMiddleware_1.authMiddleware, upload.single('image'), VehicleController_1.vehicleController.updateVehicle);
+router.delete('/:id', authMiddleware_1.authMiddleware, VehicleController_1.vehicleController.deleteVehicle);
+// Rutas específicas para imágenes
+router.put('/:id/image', authMiddleware_1.authMiddleware, upload.single('image'), VehicleController_1.vehicleController.updateVehicleImage);
+router.delete('/:id/image', authMiddleware_1.authMiddleware, VehicleController_1.vehicleController.deleteVehicleImage);
+// Rutas para gestionar responsables
+router.post('/:id/responsibles', authMiddleware_1.authMiddleware, VehicleController_1.vehicleController.addResponsibleUser);
+router.delete('/:id/responsibles', authMiddleware_1.authMiddleware, VehicleController_1.vehicleController.removeResponsibleUser);
+router.get('/:id/responsibles', authMiddleware_1.authMiddleware, VehicleController_1.vehicleController.getResponsibleUsers);
 exports.default = router;

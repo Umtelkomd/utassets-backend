@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -7,38 +40,54 @@ exports.authController = exports.AuthController = void 0;
 const UserRepository_1 = require("../repositories/UserRepository");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = require("../entity/User");
-const JWT_SECRET = process.env.JWT_SECRET || 'tu_clave_secreta_por_defecto';
+const fs = __importStar(require("fs"));
+const JWT_SECRET = process.env.JWT_SECRET || 'utassets_secret_key_2024_secure_token';
 const JWT_EXPIRES_IN = '24h';
 class AuthController {
     async login(req, res) {
         try {
-            const { username, password } = req.body;
+            const { email, password } = req.body;
+            const username = email;
+            console.log('Datos recibidos:', { email, password });
             // Validar que se proporcionaron las credenciales
-            if (!username || !password) {
-                res.status(400).json({ message: 'Se requiere usuario y contraseña' });
+            if (!email || !password) {
+                console.log('Faltan credenciales:', { email, password });
+                res.status(400).json({ message: 'Se requiere correo y contraseña' });
                 return;
             }
             // Buscar el usuario por nombre de usuario o email
+            console.log('Buscando usuario por username:', username);
             let user = await UserRepository_1.userRepository.getUserByUsername(username);
             if (!user) {
-                // Intentar buscar por email si no se encontró por username
+                console.log('Usuario no encontrado por username, intentando por email:', username);
                 user = await UserRepository_1.userRepository.getUserByEmail(username);
             }
             if (!user) {
+                console.log('Usuario no encontrado ni por username ni por email');
                 res.status(401).json({ message: 'Credenciales inválidas' });
                 return;
             }
+            console.log('Usuario encontrado:', {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                isActive: user.isActive
+            });
             // Verificar si el usuario está activo
             if (!user.isActive) {
+                console.log('Usuario inactivo');
                 res.status(401).json({ message: 'Usuario desactivado. Contacte al administrador.' });
                 return;
             }
             // Verificar la contraseña
+            console.log('Verificando contraseña...');
             const isValidPassword = await UserRepository_1.userRepository.verifyPassword(user, password);
             if (!isValidPassword) {
+                console.log('Contraseña inválida');
                 res.status(401).json({ message: 'Credenciales inválidas' });
                 return;
             }
+            console.log('Contraseña válida, generando token...');
             // Actualizar último inicio de sesión
             const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
             await UserRepository_1.userRepository.updateLastLogin(user.id, ip === null || ip === void 0 ? void 0 : ip.toString());
@@ -68,23 +117,83 @@ class AuthController {
     async register(req, res) {
         try {
             const userData = req.body;
+            const file = req.file;
+            // Logs detallados para depuración
+            console.log('=== DATOS DE REGISTRO ===');
+            console.log('Body completo:', req.body);
+            console.log('userData:', userData);
+            console.log('Headers:', req.headers);
+            console.log('Content-Type:', req.headers['content-type']);
+            console.log('File:', file);
+            console.log('=======================');
             // Validar datos de entrada básicos
-            if (!userData.username || !userData.email || !userData.password || !userData.fullName) {
+            if (!userData.email || !userData.password || !userData.fullName) {
+                console.log('Datos faltantes:', {
+                    email: userData.email,
+                    password: userData.password ? 'presente' : 'ausente',
+                    fullName: userData.fullName
+                });
+                // Si hay una imagen y hay error, eliminarla
+                if (file) {
+                    fs.unlinkSync(file.path);
+                }
                 res.status(400).json({
-                    message: 'Datos incompletos. Se requiere nombre de usuario, email, contraseña y nombre completo'
+                    message: 'Datos incompletos. Se requiere email, contraseña y nombre completo'
                 });
                 return;
+            }
+            // Generar username del email si no se proporciona
+            if (!userData.username) {
+                userData.username = userData.email.split('@')[0];
+            }
+            // Validar la fecha de nacimiento si se proporciona
+            if (userData.birthDate) {
+                const birthDate = new Date(userData.birthDate);
+                const currentDate = new Date();
+                const minDate = new Date('1900-01-01');
+                if (isNaN(birthDate.getTime())) {
+                    // Si hay una imagen y hay error, eliminarla
+                    if (file) {
+                        fs.unlinkSync(file.path);
+                    }
+                    res.status(400).json({
+                        message: 'La fecha de nacimiento no es válida'
+                    });
+                    return;
+                }
+                if (birthDate < minDate || birthDate > currentDate) {
+                    // Si hay una imagen y hay error, eliminarla
+                    if (file) {
+                        fs.unlinkSync(file.path);
+                    }
+                    res.status(400).json({
+                        message: 'La fecha de nacimiento debe estar entre 1900 y la fecha actual'
+                    });
+                    return;
+                }
             }
             // Verificar si ya existe un usuario con el mismo username o email
             const existingUsername = await UserRepository_1.userRepository.getUserByUsername(userData.username);
             if (existingUsername) {
+                // Si hay una imagen y hay error, eliminarla
+                if (file) {
+                    fs.unlinkSync(file.path);
+                }
                 res.status(400).json({ message: 'El nombre de usuario ya está en uso' });
                 return;
             }
             const existingEmail = await UserRepository_1.userRepository.getUserByEmail(userData.email);
             if (existingEmail) {
+                // Si hay una imagen y hay error, eliminarla
+                if (file) {
+                    fs.unlinkSync(file.path);
+                }
                 res.status(400).json({ message: 'El email ya está registrado' });
                 return;
+            }
+            // Si hay una imagen, agregar la ruta al usuario
+            if (file) {
+                userData.imagePath = file.filename;
             }
             // Por defecto, los usuarios nuevos se registran como técnicos
             // Solo un administrador puede cambiar este valor posteriormente
@@ -98,6 +207,10 @@ class AuthController {
             });
         }
         catch (error) {
+            // Si hay una imagen y hay error, eliminarla
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
             console.error('Error en el registro de usuario:', error);
             res.status(500).json({
                 message: 'Error en el servidor durante el registro',
@@ -219,6 +332,24 @@ class AuthController {
             }
             // Obtener los datos a actualizar
             const userData = req.body;
+            // Validar la fecha de nacimiento si se proporciona
+            if (userData.birthDate) {
+                const birthDate = new Date(userData.birthDate);
+                const currentDate = new Date();
+                const minDate = new Date('1900-01-01');
+                if (isNaN(birthDate.getTime())) {
+                    res.status(400).json({
+                        message: 'La fecha de nacimiento no es válida'
+                    });
+                    return;
+                }
+                if (birthDate < minDate || birthDate > currentDate) {
+                    res.status(400).json({
+                        message: 'La fecha de nacimiento debe estar entre 1900 y la fecha actual'
+                    });
+                    return;
+                }
+            }
             // Si se intenta cambiar el username, verificar que no exista otro usuario con ese username
             if (userData.username && userData.username !== existingUser.username) {
                 const existingUsername = await UserRepository_1.userRepository.getUserByUsername(userData.username);

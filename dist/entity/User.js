@@ -11,7 +11,10 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = exports.UserRole = void 0;
 const typeorm_1 = require("typeorm");
-const VehicleAssignment_1 = require("./VehicleAssignment");
+const Vehicle_1 = require("./Vehicle");
+const Inventory_1 = require("./Inventory");
+const Report_1 = require("./Report");
+const Comment_1 = require("./Comment");
 var UserRole;
 (function (UserRole) {
     UserRole["ADMIN"] = "administrador";
@@ -53,6 +56,10 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "phone", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'date', nullable: true }),
+    __metadata("design:type", Date)
+], User.prototype, "birthDate", void 0);
+__decorate([
     (0, typeorm_1.Column)({ default: true }),
     __metadata("design:type", Boolean)
 ], User.prototype, "isActive", void 0);
@@ -77,9 +84,21 @@ __decorate([
     __metadata("design:type", Date)
 ], User.prototype, "updatedAt", void 0);
 __decorate([
-    (0, typeorm_1.OneToMany)(() => VehicleAssignment_1.VehicleAssignment, assignment => assignment.user),
+    (0, typeorm_1.ManyToMany)(() => Vehicle_1.Vehicle, vehicle => vehicle.responsibleUsers),
     __metadata("design:type", Array)
-], User.prototype, "vehicleAssignments", void 0);
+], User.prototype, "vehicles", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => Inventory_1.Inventory, inventory => inventory.responsibleUsers),
+    __metadata("design:type", Array)
+], User.prototype, "inventories", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => Report_1.Report, report => report.user),
+    __metadata("design:type", Array)
+], User.prototype, "reports", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => Comment_1.Comment, comment => comment.user),
+    __metadata("design:type", Array)
+], User.prototype, "comments", void 0);
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)()
 ], User);

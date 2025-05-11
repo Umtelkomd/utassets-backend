@@ -7,67 +7,52 @@ const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
-const InventoryRepository_1 = require("../repositories/InventoryRepository");
 const InventoryController_1 = require("../controllers/InventoryController");
+const authMiddleware_1 = require("../middlewares/authMiddleware");
 const router = (0, express_1.Router)();
-// Asegurarse de que existe la carpeta uploads
-const uploadsDir = path_1.default.join(process.cwd(), 'uploads');
-if (!fs_1.default.existsSync(uploadsDir)) {
-    fs_1.default.mkdirSync(uploadsDir, { recursive: true });
-}
-// Configurar multer para guardar imágenes
+// Configurar multer para la subida de imágenes
 const storage = multer_1.default.diskStorage({
     destination: (_req, _file, cb) => {
-        cb(null, 'uploads/'); // Carpeta donde se guardarán las imágenes
+        const uploadDir = 'uploads/inventory';
+        // Crear el directorio si no existe
+        if (!fs_1.default.existsSync(uploadDir)) {
+            fs_1.default.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
     },
-    filename: async (req, file, cb) => {
-        try {
-            // Obtener el nombre del ítem
-            let itemName = '';
-            // Si es una actualización, obtener el nombre del ítem existente
-            if (req.params.id) {
-                const itemId = parseInt(req.params.id, 10);
-                if (!isNaN(itemId)) {
-                    const existingItem = await InventoryRepository_1.inventoryRepository.getItemById(itemId);
-                    if (existingItem && existingItem.itemName) {
-                        itemName = existingItem.itemName;
-                    }
-                }
-            }
-            // Si no pudimos obtener el nombre o es un nuevo ítem, usar el nombre del body
-            if (!itemName && req.body && req.body.itemName) {
-                itemName = req.body.itemName;
-            }
-            // Si aún no tenemos nombre, usar un valor por defecto
-            if (!itemName) {
-                itemName = 'inventory_item';
-            }
-            // Procesar el nombre para que sea seguro como nombre de archivo
-            const safeItemName = itemName
-                .toLowerCase()
-                .replace(/[^a-z0-9]/gi, '_') // Reemplazar caracteres no alfanuméricos con guiones bajos
-                .replace(/_+/g, '_') // Reemplazar múltiples guiones bajos con uno solo
-                .replace(/^_|_$/g, '') // Eliminar guiones bajos al inicio y al final
-                .slice(0, 50); // Limitar longitud
-            const fileExt = path_1.default.extname(file.originalname);
-            // Añadir un código corto para evitar colisiones en caso de nombres iguales
-            const timestamp = Date.now().toString().slice(-6); // Últimos 6 dígitos del timestamp
-            cb(null, `${safeItemName}_${timestamp}${fileExt}`);
-        }
-        catch (error) {
-            // En caso de error, usar un nombre genérico
-            console.error('Error al generar nombre de archivo:', error);
-            const timestamp = Date.now();
-            const fileExt = path_1.default.extname(file.originalname);
-            cb(null, `inventory_${timestamp}${fileExt}`);
-        }
+    filename: (_req, file, cb) => {
+        // Generar un nombre único para el archivo
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'inventory-' + uniqueSuffix + path_1.default.extname(file.originalname));
     }
 });
-const upload = (0, multer_1.default)({ storage });
+const upload = (0, multer_1.default)({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // Límite de 5MB
+    },
+    fileFilter: (_req, file, cb) => {
+        // Validar tipos de archivo
+        const filetypes = /jpeg|jpg|png|webp/;
+        const mimetype = filetypes.test(file.mimetype);
+        const extname = filetypes.test(path_1.default.extname(file.originalname).toLowerCase());
+        if (mimetype && extname) {
+            return cb(null, true);
+        }
+        cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, webp)'));
+    }
+});
 // Rutas
-router.post('/', upload.single('imagePath'), InventoryController_1.inventoryController.createItem.bind(InventoryController_1.inventoryController));
-router.get('/', InventoryController_1.inventoryController.getAllItems.bind(InventoryController_1.inventoryController));
-router.get('/:id', InventoryController_1.inventoryController.getItem.bind(InventoryController_1.inventoryController));
-router.put('/:id', upload.single('imagePath'), InventoryController_1.inventoryController.updateItem.bind(InventoryController_1.inventoryController));
-router.delete('/:id', InventoryController_1.inventoryController.deleteItem.bind(InventoryController_1.inventoryController));
+router.post('/', authMiddleware_1.authMiddleware, upload.single('image'), InventoryController_1.inventoryController.createItem);
+router.get('/', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.getAllItems);
+router.get('/:id', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.getItem);
+router.put('/:id', authMiddleware_1.authMiddleware, upload.single('image'), InventoryController_1.inventoryController.updateItem);
+router.delete('/:id', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.deleteItem);
+// Rutas específicas para imágenes
+router.post('/:id/image', authMiddleware_1.authMiddleware, upload.single('image'), InventoryController_1.inventoryController.updateItemImage);
+router.delete('/:id/image', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.deleteItemImage);
+// Rutas para usuarios responsables
+router.post('/:id/responsibles', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.addResponsibleUser);
+router.delete('/:id/responsibles', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.removeResponsibleUser);
+router.get('/:id/responsibles', authMiddleware_1.authMiddleware, InventoryController_1.inventoryController.getResponsibleUsers);
 exports.default = router;

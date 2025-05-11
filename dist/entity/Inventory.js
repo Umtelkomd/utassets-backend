@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Inventory = void 0;
 const typeorm_1 = require("typeorm");
+const User_1 = require("./User");
 let Inventory = class Inventory {
 };
 exports.Inventory = Inventory;
@@ -55,10 +56,6 @@ __decorate([
     __metadata("design:type", Object)
 ], Inventory.prototype, "nextMaintenanceDate", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'responsible_person', type: 'varchar', nullable: true }),
-    __metadata("design:type", Object)
-], Inventory.prototype, "responsiblePerson", void 0);
-__decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", Object)
 ], Inventory.prototype, "notes", void 0);
@@ -74,6 +71,21 @@ __decorate([
     (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
     __metadata("design:type", Date)
 ], Inventory.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => User_1.User, user => user.inventories),
+    (0, typeorm_1.JoinTable)({
+        name: 'inventory_responsibles',
+        joinColumn: {
+            name: 'inventory_id',
+            referencedColumnName: 'id'
+        },
+        inverseJoinColumn: {
+            name: 'user_id',
+            referencedColumnName: 'id'
+        }
+    }),
+    __metadata("design:type", Array)
+], Inventory.prototype, "responsibleUsers", void 0);
 exports.Inventory = Inventory = __decorate([
     (0, typeorm_1.Entity)({ name: 'inventory' })
 ], Inventory);
