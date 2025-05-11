@@ -19,8 +19,15 @@ var path_1 = require("path");
 require("./scripts/initDirectories");
 var app = express_1["default"]();
 var PORT = process.env.PORT || 5050;
-// Configuración de CORS simplificada
-app.use(cors_1["default"]());
+app.use(cors_1["default"]({
+    origin: [
+        'https://glassfaser-utk.de',
+        'http://localhost:3000'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false
+}));
 app.use(express_1["default"].json());
 app.use(express_1["default"].urlencoded({ extended: true }));
 // Servir archivos estáticos

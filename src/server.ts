@@ -19,14 +19,14 @@ import './scripts/initDirectories';
 const app = express();
 const PORT = process.env.PORT || 5050;
 
-// Configuración de CORS simplificada
 app.use(cors({
-    origin: ['https://glassfaser-utk.de',
-        'http://localhost:3000',
-        'https://glassfaser-utk.de/utassets',
-        'https://glassfaser-utk.de/utassets/login'], // Asegúrate de poner exactamente tu dominio
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true // Si usas cookies o auth headers
+    origin: [
+        'https://glassfaser-utk.de',
+        'http://localhost:3000'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false
 }));
 
 app.use(express.json());
