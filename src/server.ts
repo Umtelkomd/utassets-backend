@@ -21,7 +21,10 @@ const PORT = process.env.PORT || 5050;
 
 // Configuración de CORS mejorada
 app.use(cors({
-    origin: '*', // Permite cualquier origen
+    origin: [
+        'http://localhost:3000',
+        'https://glassfaser-utk.de'
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'Access-Control-Allow-Origin'],
     exposedHeaders: ['Content-Length', 'X-Requested-With', 'Authorization'],
@@ -31,7 +34,13 @@ app.use(cors({
 }));
 
 // Middleware adicional para OPTIONS requests (preflight)
-app.options('*', cors());
+app.options('*', cors({
+    origin: [
+        'http://localhost:3000',
+        'https://glassfaser-utk.de'
+    ],
+    credentials: true
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
