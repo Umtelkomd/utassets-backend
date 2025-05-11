@@ -22,18 +22,8 @@ const path_1 = __importDefault(require("path"));
 require("./scripts/initDirectories");
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5050;
-// Configuración de CORS mejorada
-app.use((0, cors_1.default)({
-    origin: '*', // Permite cualquier origen
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'Access-Control-Allow-Origin'],
-    exposedHeaders: ['Content-Length', 'X-Requested-With', 'Authorization'],
-    credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204
-}));
-// Middleware adicional para OPTIONS requests (preflight)
-app.options('*', (0, cors_1.default)());
+// Configuración de CORS simplificada
+app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 // Servir archivos estáticos
