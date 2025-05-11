@@ -152,17 +152,37 @@ var AuthController = /** @class */ (function () {
                         _a.trys.push([0, 4, , 5]);
                         userData = req.body;
                         file = req.file;
+                        // Logs detallados para depuración
+                        console.log('=== DATOS DE REGISTRO ===');
+                        console.log('Body completo:', req.body);
+                        console.log('userData:', userData);
+                        console.log('Headers:', req.headers);
+                        console.log('Content-Type:', req.headers['content-type']);
+                        console.log('File:', file);
+                        console.log('=======================');
+                        // Si se proporcionan firstName y lastName, combinarlos en fullName
+                        if (userData.firstName && userData.lastName && !userData.fullName) {
+                            userData.fullName = userData.firstName + " " + userData.lastName;
+                        }
                         // Validar datos de entrada básicos
-                        console.log('Datos recibidos:', userData);
-                        if (!userData.username || !userData.email || !userData.password || !userData.fullName) {
+                        if (!userData.email || !userData.password || !userData.fullName) {
+                            console.log('Datos faltantes:', {
+                                email: userData.email,
+                                password: userData.password ? 'presente' : 'ausente',
+                                fullName: userData.fullName
+                            });
                             // Si hay una imagen y hay error, eliminarla
                             if (file) {
                                 fs.unlinkSync(file.path);
                             }
                             res.status(400).json({
-                                message: 'Datos incompletos. Se requiere nombre de usuario, email, contraseña y nombre completo'
+                                message: 'Datos incompletos. Se requiere email, contraseña y nombre completo'
                             });
                             return [2 /*return*/];
+                        }
+                        // Generar username del email si no se proporciona
+                        if (!userData.username) {
+                            userData.username = userData.email.split('@')[0];
                         }
                         // Validar la fecha de nacimiento si se proporciona
                         if (userData.birthDate) {
@@ -212,9 +232,14 @@ var AuthController = /** @class */ (function () {
                             res.status(400).json({ message: 'El email ya está registrado' });
                             return [2 /*return*/];
                         }
-                        // Si hay una imagen, agregar la ruta al usuario
+                        // Si hay una imagen como archivo, agregar la ruta al usuario
                         if (file) {
                             userData.imagePath = file.filename;
+                        }
+                        // Si se proporciona una URL de imagen directamente
+                        else if (userData.imagePath && typeof userData.imagePath === 'string' && userData.imagePath.startsWith('http')) {
+                            // Mantener la URL como está
+                            console.log('Usando URL de imagen proporcionada:', userData.imagePath);
                         }
                         // Por defecto, los usuarios nuevos se registran como técnicos
                         // Solo un administrador puede cambiar este valor posteriormente

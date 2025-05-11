@@ -33,6 +33,10 @@ export class User {
     @Column({ length: 100 })
     fullName: string;
 
+    // Campos adicionales para facilitar el registro desde el frontend
+    firstName?: string;
+    lastName?: string;
+
     @Column({ nullable: true, length: 20 })
     phone?: string;
 
