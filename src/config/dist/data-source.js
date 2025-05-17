@@ -37,6 +37,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 exports.__esModule = true;
 exports.initialize = exports.AppDataSource = void 0;
+require("reflect-metadata");
 var typeorm_1 = require("typeorm");
 require("dotenv/config");
 var User_1 = require("../entity/User");
@@ -49,6 +50,8 @@ var Project_1 = require("../entity/Project");
 var Maintenance_1 = require("../entity/Maintenance");
 var Report_1 = require("../entity/Report");
 var Comment_1 = require("../entity/Comment");
+var Rental_1 = require("../entity/Rental");
+var path_1 = require("path");
 exports.AppDataSource = new typeorm_1.DataSource({
     type: "mysql",
     host: process.env.DB_HOST || "localhost",
@@ -59,6 +62,7 @@ exports.AppDataSource = new typeorm_1.DataSource({
     synchronize: true,
     logging: true,
     entities: [
+        path_1["default"].join(__dirname, '..', 'entity', '*.{ts,js}'),
         User_1.User,
         Vehicle_1.Vehicle,
         Inventory_1.Inventory,
@@ -68,7 +72,8 @@ exports.AppDataSource = new typeorm_1.DataSource({
         Project_1.Project,
         Maintenance_1.Maintenance,
         Report_1.Report,
-        Comment_1.Comment
+        Comment_1.Comment,
+        Rental_1.Rental
     ],
     migrations: [],
     subscribers: [],

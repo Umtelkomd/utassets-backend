@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { DataSource } from "typeorm"
 import "dotenv/config"
 import { User } from '../entity/User';
@@ -11,6 +12,7 @@ import { Maintenance } from '../entity/Maintenance';
 import { Report } from '../entity/Report';
 import { Comment } from '../entity/Comment';
 import { Rental } from '../entity/Rental';
+import path from 'path';
 
 export const AppDataSource = new DataSource({
     type: "mysql",
@@ -22,6 +24,7 @@ export const AppDataSource = new DataSource({
     synchronize: true,
     logging: true,
     entities: [
+        path.join(__dirname, '..', 'entity', '*.{ts,js}'),
         User,
         Vehicle,
         Inventory,

@@ -50,6 +50,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 exports.__esModule = true;
 exports.rentalRepository = exports.RentalRepository = void 0;
+require("reflect-metadata");
 var typeorm_1 = require("typeorm");
 var data_source_1 = require("../config/data-source");
 var Rental_1 = require("../entity/Rental");

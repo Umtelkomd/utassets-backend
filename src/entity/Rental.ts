@@ -2,36 +2,36 @@ import 'reflect-metadata';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Inventory } from './Inventory';
 
-@Entity({ name: 'rental' })
+@Entity('rental')
 export class Rental {
     @PrimaryGeneratedColumn()
-    id: number;
+    id!: number;
 
-    @ManyToOne(() => Inventory)
+    @ManyToOne(() => Inventory, { eager: true })
     @JoinColumn({ name: 'object_id' })
-    object: Inventory;
+    object!: Inventory;
 
     @Column({ name: 'object_id' })
-    objectId: number;
+    objectId!: number;
 
     @Column({ name: 'start_date', type: 'date' })
-    startDate: Date;
+    startDate!: Date;
 
     @Column({ name: 'end_date', type: 'date' })
-    endDate: Date;
+    endDate!: Date;
 
     @Column({ name: 'daily_cost', type: 'decimal', precision: 10, scale: 2 })
-    dailyCost: number;
+    dailyCost!: number;
 
     @Column({ name: 'people_count', type: 'int', nullable: true })
-    peopleCount: number | null;
+    peopleCount!: number | null;
 
     @Column({ type: 'decimal', precision: 10, scale: 2 })
-    total: number;
+    total!: number;
 
     @CreateDateColumn({ name: 'created_at' })
-    createdAt: Date;
+    createdAt!: Date;
 
     @UpdateDateColumn({ name: 'updated_at' })
-    updatedAt: Date;
+    updatedAt!: Date;
 } 

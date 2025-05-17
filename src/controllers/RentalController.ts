@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
 import { rentalRepository } from '../repositories/RentalRepository';
 import { inventoryRepository } from '../repositories/InventoryRepository';
-import { AppDataSource } from '../config/data-source';
-import { Inventory } from '../entity/Inventory';
 
 export class RentalController {
     // Crear un nuevo alquiler

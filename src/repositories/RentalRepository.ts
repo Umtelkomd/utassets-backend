@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { AppDataSource } from '../config/data-source';
 import { Rental } from '../entity/Rental';

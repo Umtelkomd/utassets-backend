@@ -17,7 +17,7 @@ var Rental = /** @class */ (function () {
         typeorm_1.PrimaryGeneratedColumn()
     ], Rental.prototype, "id");
     __decorate([
-        typeorm_1.ManyToOne(function () { return Inventory_1.Inventory; }),
+        typeorm_1.ManyToOne(function () { return Inventory_1.Inventory; }, { eager: true }),
         typeorm_1.JoinColumn({ name: 'object_id' })
     ], Rental.prototype, "object");
     __decorate([
@@ -45,7 +45,7 @@ var Rental = /** @class */ (function () {
         typeorm_1.UpdateDateColumn({ name: 'updated_at' })
     ], Rental.prototype, "updatedAt");
     Rental = __decorate([
-        typeorm_1.Entity({ name: 'rental' })
+        typeorm_1.Entity('rental')
     ], Rental);
     return Rental;
 }());
