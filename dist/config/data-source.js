@@ -1,6 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initialize = exports.AppDataSource = void 0;
+require("reflect-metadata");
 const typeorm_1 = require("typeorm");
 require("dotenv/config");
 const User_1 = require("../entity/User");
@@ -13,6 +17,8 @@ const Project_1 = require("../entity/Project");
 const Maintenance_1 = require("../entity/Maintenance");
 const Report_1 = require("../entity/Report");
 const Comment_1 = require("../entity/Comment");
+const Rental_1 = require("../entity/Rental");
+const path_1 = __importDefault(require("path"));
 exports.AppDataSource = new typeorm_1.DataSource({
     type: "mysql",
     host: process.env.DB_HOST || "localhost",
@@ -23,6 +29,7 @@ exports.AppDataSource = new typeorm_1.DataSource({
     synchronize: true,
     logging: true,
     entities: [
+        path_1.default.join(__dirname, '..', 'entity', '*.{ts,js}'),
         User_1.User,
         Vehicle_1.Vehicle,
         Inventory_1.Inventory,
@@ -32,7 +39,8 @@ exports.AppDataSource = new typeorm_1.DataSource({
         Project_1.Project,
         Maintenance_1.Maintenance,
         Report_1.Report,
-        Comment_1.Comment
+        Comment_1.Comment,
+        Rental_1.Rental
     ],
     migrations: [],
     subscribers: [],

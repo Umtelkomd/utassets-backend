@@ -10,6 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Rental = void 0;
+require("reflect-metadata");
 const typeorm_1 = require("typeorm");
 const Inventory_1 = require("./Inventory");
 let Rental = class Rental {
@@ -20,14 +21,14 @@ __decorate([
     __metadata("design:type", Number)
 ], Rental.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => Inventory_1.Inventory),
-    (0, typeorm_1.JoinColumn)({ name: 'object_id' }),
-    __metadata("design:type", Inventory_1.Inventory)
-], Rental.prototype, "object", void 0);
-__decorate([
     (0, typeorm_1.Column)({ name: 'object_id' }),
     __metadata("design:type", Number)
 ], Rental.prototype, "objectId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Inventory_1.Inventory, { eager: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'object_id' }),
+    __metadata("design:type", Inventory_1.Inventory)
+], Rental.prototype, "object", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'start_date', type: 'date' }),
     __metadata("design:type", Date)
@@ -57,5 +58,5 @@ __decorate([
     __metadata("design:type", Date)
 ], Rental.prototype, "updatedAt", void 0);
 exports.Rental = Rental = __decorate([
-    (0, typeorm_1.Entity)({ name: 'rental' })
+    (0, typeorm_1.Entity)('rental')
 ], Rental);

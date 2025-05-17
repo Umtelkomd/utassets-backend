@@ -14,15 +14,20 @@ interface RentalCreateDTO {
 }
 
 export class RentalRepository extends Repository<Rental> {
-    constructor() {
-        if (!AppDataSource.isInitialized) {
-            initialize().then(() => {
-                console.log('Base de datos inicializada en RentalRepository');
-            }).catch(error => {
-                console.error('Error al inicializar la base de datos:', error);
-            });
-        }
+    private static instance: RentalRepository;
+
+    private constructor() {
         super(Rental, AppDataSource.manager);
+    }
+
+    public static async getInstance(): Promise<RentalRepository> {
+        if (!RentalRepository.instance) {
+            if (!AppDataSource.isInitialized) {
+                await initialize();
+            }
+            RentalRepository.instance = new RentalRepository();
+        }
+        return RentalRepository.instance;
     }
 
     async createRental(rental: RentalCreateDTO): Promise<Rental> {
@@ -122,4 +127,11 @@ export class RentalRepository extends Repository<Rental> {
     }
 }
 
-export const rentalRepository = new RentalRepository(); 
+let rentalRepositoryInstance: RentalRepository | null = null;
+
+export const getRentalRepository = async (): Promise<RentalRepository> => {
+    if (!rentalRepositoryInstance) {
+        rentalRepositoryInstance = await RentalRepository.getInstance();
+    }
+    return rentalRepositoryInstance;
+}; 

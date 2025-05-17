@@ -49,7 +49,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.rentalRepository = exports.RentalRepository = void 0;
+exports.getRentalRepository = exports.RentalRepository = void 0;
 require("reflect-metadata");
 var typeorm_1 = require("typeorm");
 var data_source_1 = require("../config/data-source");
@@ -57,17 +57,27 @@ var Rental_1 = require("../entity/Rental");
 var RentalRepository = /** @class */ (function (_super) {
     __extends(RentalRepository, _super);
     function RentalRepository() {
-        var _this = this;
-        if (!data_source_1.AppDataSource.isInitialized) {
-            data_source_1.initialize().then(function () {
-                console.log('Base de datos inicializada en RentalRepository');
-            })["catch"](function (error) {
-                console.error('Error al inicializar la base de datos:', error);
-            });
-        }
-        _this = _super.call(this, Rental_1.Rental, data_source_1.AppDataSource.manager) || this;
-        return _this;
+        return _super.call(this, Rental_1.Rental, data_source_1.AppDataSource.manager) || this;
     }
+    RentalRepository.getInstance = function () {
+        return __awaiter(this, void 0, Promise, function () {
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!!RentalRepository.instance) return [3 /*break*/, 3];
+                        if (!!data_source_1.AppDataSource.isInitialized) return [3 /*break*/, 2];
+                        return [4 /*yield*/, data_source_1.initialize()];
+                    case 1:
+                        _a.sent();
+                        _a.label = 2;
+                    case 2:
+                        RentalRepository.instance = new RentalRepository();
+                        _a.label = 3;
+                    case 3: return [2 /*return*/, RentalRepository.instance];
+                }
+            });
+        });
+    };
     RentalRepository.prototype.createRental = function (rental) {
         return __awaiter(this, void 0, Promise, function () {
             var newRental;
@@ -212,4 +222,17 @@ var RentalRepository = /** @class */ (function (_super) {
     return RentalRepository;
 }(typeorm_1.Repository));
 exports.RentalRepository = RentalRepository;
-exports.rentalRepository = new RentalRepository();
+var rentalRepositoryInstance = null;
+exports.getRentalRepository = function () { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                if (!!rentalRepositoryInstance) return [3 /*break*/, 2];
+                return [4 /*yield*/, RentalRepository.getInstance()];
+            case 1:
+                rentalRepositoryInstance = _a.sent();
+                _a.label = 2;
+            case 2: return [2 /*return*/, rentalRepositoryInstance];
+        }
+    });
+}); };

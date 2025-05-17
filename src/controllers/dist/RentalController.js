@@ -45,11 +45,14 @@ var RentalController = /** @class */ (function () {
     // Crear un nuevo alquiler
     RentalController.prototype.createRental = function (req, res) {
         return __awaiter(this, void 0, Promise, function () {
-            var rental_1, requiredFields, missingFields, startDate, endDate, object, diffTime, diffDays, calculatedTotal, newRental, rentalWithObject, error_1;
+            var rentalRepository, rental_1, requiredFields, missingFields, startDate, endDate, object, diffTime, diffDays, calculatedTotal, newRental, rentalWithObject, error_1;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 4, , 5]);
+                        _a.trys.push([0, 5, , 6]);
+                        return [4 /*yield*/, RentalRepository_1.getRentalRepository()];
+                    case 1:
+                        rentalRepository = _a.sent();
                         rental_1 = req.body;
                         requiredFields = ['objectId', 'startDate', 'endDate', 'dailyCost', 'total'];
                         missingFields = requiredFields.filter(function (field) { return !rental_1[field]; });
@@ -71,7 +74,7 @@ var RentalController = /** @class */ (function () {
                             return [2 /*return*/];
                         }
                         return [4 /*yield*/, InventoryRepository_1.inventoryRepository.getItemById(rental_1.objectId)];
-                    case 1:
+                    case 2:
                         object = _a.sent();
                         if (!object) {
                             res.status(404).json({ message: 'Objeto no encontrado' });
@@ -83,7 +86,7 @@ var RentalController = /** @class */ (function () {
                         if (!rental_1.total || Math.abs(calculatedTotal - parseFloat(rental_1.total)) > 0.01) {
                             rental_1.total = calculatedTotal;
                         }
-                        return [4 /*yield*/, RentalRepository_1.rentalRepository.createRental({
+                        return [4 /*yield*/, rentalRepository.createRental({
                                 objectId: rental_1.objectId,
                                 startDate: startDate,
                                 endDate: endDate,
@@ -91,22 +94,22 @@ var RentalController = /** @class */ (function () {
                                 peopleCount: rental_1.peopleCount ? parseInt(rental_1.peopleCount, 10) : null,
                                 total: parseFloat(rental_1.total)
                             })];
-                    case 2:
-                        newRental = _a.sent();
-                        return [4 /*yield*/, RentalRepository_1.rentalRepository.getRentalById(newRental.id)];
                     case 3:
+                        newRental = _a.sent();
+                        return [4 /*yield*/, rentalRepository.getRentalById(newRental.id)];
+                    case 4:
                         rentalWithObject = _a.sent();
                         res.status(201).json(rentalWithObject);
-                        return [3 /*break*/, 5];
-                    case 4:
+                        return [3 /*break*/, 6];
+                    case 5:
                         error_1 = _a.sent();
                         console.error('Error al crear el alquiler:', error_1);
                         res.status(500).json({
                             message: 'Error al crear el alquiler',
                             error: error_1 instanceof Error ? error_1.message : 'Error desconocido'
                         });
-                        return [3 /*break*/, 5];
-                    case 5: return [2 /*return*/];
+                        return [3 /*break*/, 6];
+                    case 6: return [2 /*return*/];
                 }
             });
         });
@@ -114,25 +117,28 @@ var RentalController = /** @class */ (function () {
     // Obtener todos los alquileres
     RentalController.prototype.getAllRentals = function (req, res) {
         return __awaiter(this, void 0, Promise, function () {
-            var rentals, error_2;
+            var rentalRepository, rentals, error_2;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4 /*yield*/, RentalRepository_1.rentalRepository.getAllRentals()];
+                        _a.trys.push([0, 3, , 4]);
+                        return [4 /*yield*/, RentalRepository_1.getRentalRepository()];
                     case 1:
+                        rentalRepository = _a.sent();
+                        return [4 /*yield*/, rentalRepository.getAllRentals()];
+                    case 2:
                         rentals = _a.sent();
                         res.status(200).json(rentals);
-                        return [3 /*break*/, 3];
-                    case 2:
+                        return [3 /*break*/, 4];
+                    case 3:
                         error_2 = _a.sent();
                         console.error('Error al obtener los alquileres:', error_2);
                         res.status(500).json({
                             message: 'Error al obtener los alquileres',
                             error: error_2 instanceof Error ? error_2.message : 'Error desconocido'
                         });
-                        return [3 /*break*/, 3];
-                    case 3: return [2 /*return*/];
+                        return [3 /*break*/, 4];
+                    case 4: return [2 /*return*/];
                 }
             });
         });
@@ -140,34 +146,37 @@ var RentalController = /** @class */ (function () {
     // Obtener un alquiler por ID
     RentalController.prototype.getRental = function (req, res) {
         return __awaiter(this, void 0, Promise, function () {
-            var id, rental, error_3;
+            var id, rentalRepository, rental, error_3;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 2, , 3]);
+                        _a.trys.push([0, 3, , 4]);
                         id = parseInt(req.params.id, 10);
                         if (isNaN(id)) {
                             res.status(400).json({ message: 'ID de alquiler inválido' });
                             return [2 /*return*/];
                         }
-                        return [4 /*yield*/, RentalRepository_1.rentalRepository.getRentalById(id)];
+                        return [4 /*yield*/, RentalRepository_1.getRentalRepository()];
                     case 1:
+                        rentalRepository = _a.sent();
+                        return [4 /*yield*/, rentalRepository.getRentalById(id)];
+                    case 2:
                         rental = _a.sent();
                         if (!rental) {
                             res.status(404).json({ message: 'Alquiler no encontrado' });
                             return [2 /*return*/];
                         }
                         res.status(200).json(rental);
-                        return [3 /*break*/, 3];
-                    case 2:
+                        return [3 /*break*/, 4];
+                    case 3:
                         error_3 = _a.sent();
                         console.error('Error al obtener el alquiler:', error_3);
                         res.status(500).json({
                             message: 'Error al obtener el alquiler',
                             error: error_3 instanceof Error ? error_3.message : 'Error desconocido'
                         });
-                        return [3 /*break*/, 3];
-                    case 3: return [2 /*return*/];
+                        return [3 /*break*/, 4];
+                    case 4: return [2 /*return*/];
                 }
             });
         });
@@ -175,19 +184,22 @@ var RentalController = /** @class */ (function () {
     // Actualizar un alquiler
     RentalController.prototype.updateRental = function (req, res) {
         return __awaiter(this, void 0, Promise, function () {
-            var id, rental, existingRental, startDate, endDate, object, updatedRental, error_4;
+            var id, rental, rentalRepository, existingRental, startDate, endDate, object, updatedRental, error_4;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 5, , 6]);
+                        _a.trys.push([0, 6, , 7]);
                         id = parseInt(req.params.id, 10);
                         if (isNaN(id)) {
                             res.status(400).json({ message: 'ID de alquiler inválido' });
                             return [2 /*return*/];
                         }
                         rental = req.body;
-                        return [4 /*yield*/, RentalRepository_1.rentalRepository.getRentalById(id)];
+                        return [4 /*yield*/, RentalRepository_1.getRentalRepository()];
                     case 1:
+                        rentalRepository = _a.sent();
+                        return [4 /*yield*/, rentalRepository.getRentalById(id)];
+                    case 2:
                         existingRental = _a.sent();
                         if (!existingRental) {
                             res.status(404).json({ message: 'Alquiler no encontrado' });
@@ -202,29 +214,29 @@ var RentalController = /** @class */ (function () {
                                 return [2 /*return*/];
                             }
                         }
-                        if (!(rental.objectId && rental.objectId !== existingRental.objectId)) return [3 /*break*/, 3];
+                        if (!(rental.objectId && rental.objectId !== existingRental.objectId)) return [3 /*break*/, 4];
                         return [4 /*yield*/, InventoryRepository_1.inventoryRepository.getItemById(rental.objectId)];
-                    case 2:
+                    case 3:
                         object = _a.sent();
                         if (!object) {
                             res.status(404).json({ message: 'Objeto no encontrado' });
                             return [2 /*return*/];
                         }
-                        _a.label = 3;
-                    case 3: return [4 /*yield*/, RentalRepository_1.rentalRepository.updateRental(id, rental)];
-                    case 4:
+                        _a.label = 4;
+                    case 4: return [4 /*yield*/, rentalRepository.updateRental(id, rental)];
+                    case 5:
                         updatedRental = _a.sent();
                         res.status(200).json(updatedRental);
-                        return [3 /*break*/, 6];
-                    case 5:
+                        return [3 /*break*/, 7];
+                    case 6:
                         error_4 = _a.sent();
                         console.error('Error al actualizar el alquiler:', error_4);
                         res.status(500).json({
                             message: 'Error al actualizar el alquiler',
                             error: error_4 instanceof Error ? error_4.message : 'Error desconocido'
                         });
-                        return [3 /*break*/, 6];
-                    case 6: return [2 /*return*/];
+                        return [3 /*break*/, 7];
+                    case 7: return [2 /*return*/];
                 }
             });
         });
@@ -232,40 +244,43 @@ var RentalController = /** @class */ (function () {
     // Eliminar un alquiler
     RentalController.prototype.deleteRental = function (req, res) {
         return __awaiter(this, void 0, Promise, function () {
-            var id, rental, error_5;
+            var id, rentalRepository, rental, error_5;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 3, , 4]);
+                        _a.trys.push([0, 4, , 5]);
                         id = parseInt(req.params.id, 10);
                         if (isNaN(id)) {
                             res.status(400).json({ message: 'ID de alquiler inválido' });
                             return [2 /*return*/];
                         }
-                        return [4 /*yield*/, RentalRepository_1.rentalRepository.getRentalById(id)];
+                        return [4 /*yield*/, RentalRepository_1.getRentalRepository()];
                     case 1:
+                        rentalRepository = _a.sent();
+                        return [4 /*yield*/, rentalRepository.getRentalById(id)];
+                    case 2:
                         rental = _a.sent();
                         if (!rental) {
                             res.status(404).json({ message: 'Alquiler no encontrado' });
                             return [2 /*return*/];
                         }
-                        return [4 /*yield*/, RentalRepository_1.rentalRepository.deleteRental(id)];
-                    case 2:
+                        return [4 /*yield*/, rentalRepository.deleteRental(id)];
+                    case 3:
                         _a.sent();
                         res.status(200).json({
                             message: 'Alquiler eliminado correctamente',
                             id: id
                         });
-                        return [3 /*break*/, 4];
-                    case 3:
+                        return [3 /*break*/, 5];
+                    case 4:
                         error_5 = _a.sent();
                         console.error('Error al eliminar el alquiler:', error_5);
                         res.status(500).json({
                             message: 'Error al eliminar el alquiler',
                             error: error_5 instanceof Error ? error_5.message : 'Error desconocido'
                         });
-                        return [3 /*break*/, 4];
-                    case 4: return [2 /*return*/];
+                        return [3 /*break*/, 5];
+                    case 5: return [2 /*return*/];
                 }
             });
         });
@@ -273,11 +288,11 @@ var RentalController = /** @class */ (function () {
     // Obtener alquileres por objeto
     RentalController.prototype.getRentalsByObject = function (req, res) {
         return __awaiter(this, void 0, Promise, function () {
-            var objectId, object, rentals, error_6;
+            var objectId, object, rentalRepository, rentals, error_6;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 3, , 4]);
+                        _a.trys.push([0, 4, , 5]);
                         objectId = parseInt(req.params.objectId, 10);
                         if (isNaN(objectId)) {
                             res.status(400).json({ message: 'ID de objeto inválido' });
@@ -290,20 +305,23 @@ var RentalController = /** @class */ (function () {
                             res.status(404).json({ message: 'Objeto no encontrado' });
                             return [2 /*return*/];
                         }
-                        return [4 /*yield*/, RentalRepository_1.rentalRepository.getRentalsByObject(objectId)];
+                        return [4 /*yield*/, RentalRepository_1.getRentalRepository()];
                     case 2:
+                        rentalRepository = _a.sent();
+                        return [4 /*yield*/, rentalRepository.getRentalsByObject(objectId)];
+                    case 3:
                         rentals = _a.sent();
                         res.status(200).json(rentals);
-                        return [3 /*break*/, 4];
-                    case 3:
+                        return [3 /*break*/, 5];
+                    case 4:
                         error_6 = _a.sent();
                         console.error('Error al obtener los alquileres del objeto:', error_6);
                         res.status(500).json({
                             message: 'Error al obtener los alquileres del objeto',
                             error: error_6 instanceof Error ? error_6.message : 'Error desconocido'
                         });
-                        return [3 /*break*/, 4];
-                    case 4: return [2 /*return*/];
+                        return [3 /*break*/, 5];
+                    case 5: return [2 /*return*/];
                 }
             });
         });
@@ -311,11 +329,11 @@ var RentalController = /** @class */ (function () {
     // Obtener alquileres por rango de fechas
     RentalController.prototype.getRentalsByDateRange = function (req, res) {
         return __awaiter(this, void 0, Promise, function () {
-            var _a, startDate, endDate, start, end, rentals, error_7;
+            var _a, startDate, endDate, start, end, rentalRepository, rentals, error_7;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
-                        _b.trys.push([0, 2, , 3]);
+                        _b.trys.push([0, 3, , 4]);
                         _a = req.query, startDate = _a.startDate, endDate = _a.endDate;
                         if (!startDate || !endDate) {
                             res.status(400).json({ message: 'Se requieren startDate y endDate' });
@@ -331,20 +349,23 @@ var RentalController = /** @class */ (function () {
                             res.status(400).json({ message: 'La fecha de inicio debe ser anterior o igual a la fecha de fin' });
                             return [2 /*return*/];
                         }
-                        return [4 /*yield*/, RentalRepository_1.rentalRepository.getRentalsByDateRange(start, end)];
+                        return [4 /*yield*/, RentalRepository_1.getRentalRepository()];
                     case 1:
+                        rentalRepository = _b.sent();
+                        return [4 /*yield*/, rentalRepository.getRentalsByDateRange(start, end)];
+                    case 2:
                         rentals = _b.sent();
                         res.status(200).json(rentals);
-                        return [3 /*break*/, 3];
-                    case 2:
+                        return [3 /*break*/, 4];
+                    case 3:
                         error_7 = _b.sent();
                         console.error('Error al obtener los alquileres por rango de fechas:', error_7);
                         res.status(500).json({
                             message: 'Error al obtener los alquileres por rango de fechas',
                             error: error_7 instanceof Error ? error_7.message : 'Error desconocido'
                         });
-                        return [3 /*break*/, 3];
-                    case 3: return [2 /*return*/];
+                        return [3 /*break*/, 4];
+                    case 4: return [2 /*return*/];
                 }
             });
         });

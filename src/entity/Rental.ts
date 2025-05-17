@@ -1,7 +1,8 @@
+import 'reflect-metadata';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Inventory } from './Inventory';
 
-@Entity()
+@Entity('rental')
 export class Rental {
     @PrimaryGeneratedColumn()
     id!: number;
@@ -9,28 +10,28 @@ export class Rental {
     @Column({ name: 'object_id' })
     objectId!: number;
 
-    @ManyToOne(() => Inventory)
+    @ManyToOne(() => Inventory, { eager: true })
     @JoinColumn({ name: 'object_id' })
     object!: Inventory;
 
-    @Column({ type: 'date' })
+    @Column({ name: 'start_date', type: 'date' })
     startDate!: Date;
 
-    @Column({ type: 'date' })
+    @Column({ name: 'end_date', type: 'date' })
     endDate!: Date;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ name: 'daily_cost', type: 'decimal', precision: 10, scale: 2 })
     dailyCost!: number;
 
-    @Column({ type: 'int', nullable: true })
+    @Column({ name: 'people_count', type: 'int', nullable: true })
     peopleCount!: number | null;
 
     @Column({ type: 'decimal', precision: 10, scale: 2 })
     total!: number;
 
-    @CreateDateColumn()
+    @CreateDateColumn({ name: 'created_at' })
     createdAt!: Date;
 
-    @UpdateDateColumn()
+    @UpdateDateColumn({ name: 'updated_at' })
     updatedAt!: Date;
 } 

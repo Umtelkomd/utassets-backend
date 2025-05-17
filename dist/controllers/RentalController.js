@@ -4,71 +4,10 @@ exports.rentalController = exports.RentalController = void 0;
 const RentalRepository_1 = require("../repositories/RentalRepository");
 const InventoryRepository_1 = require("../repositories/InventoryRepository");
 class RentalController {
-    // Verificar disponibilidad de un objeto en un rango de fechas
-    async checkAvailability(req, res) {
-        try {
-            const { objectId, startDate, endDate } = req.query;
-            // Validar parámetros
-            if (!objectId || !startDate || !endDate) {
-                res.status(400).json({
-                    message: 'Se requieren objectId, startDate y endDate',
-                    available: false
-                });
-                return;
-            }
-            const objId = parseInt(objectId, 10);
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            // Validar que las fechas sean válidas
-            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-                res.status(400).json({
-                    message: 'Fechas inválidas',
-                    available: false
-                });
-                return;
-            }
-            // Validar que la fecha de inicio sea anterior a la fecha de fin
-            if (start >= end) {
-                res.status(400).json({
-                    message: 'La fecha de inicio debe ser anterior a la fecha de fin',
-                    available: false
-                });
-                return;
-            }
-            // Validar que el objeto exista
-            const object = await InventoryRepository_1.inventoryRepository.getItemById(objId);
-            if (!object) {
-                res.status(404).json({
-                    message: 'Objeto no encontrado',
-                    available: false
-                });
-                return;
-            }
-            // Verificar disponibilidad
-            const isAvailable = await RentalRepository_1.rentalRepository.checkAvailability(objId, start, end);
-            res.status(200).json({
-                available: isAvailable,
-                object: {
-                    id: object.id,
-                    itemName: object.itemName,
-                    itemCode: object.itemCode
-                },
-                startDate: start,
-                endDate: end
-            });
-        }
-        catch (error) {
-            console.error('Error al verificar disponibilidad:', error);
-            res.status(500).json({
-                message: 'Error al verificar disponibilidad',
-                error: error instanceof Error ? error.message : 'Error desconocido',
-                available: false
-            });
-        }
-    }
     // Crear un nuevo alquiler
     async createRental(req, res) {
         try {
+            const rentalRepository = await (0, RentalRepository_1.getRentalRepository)();
             const rental = req.body;
             // Validar campos requeridos
             const requiredFields = ['objectId', 'startDate', 'endDate', 'dailyCost', 'total'];
@@ -97,14 +36,6 @@ class RentalController {
                 res.status(404).json({ message: 'Objeto no encontrado' });
                 return;
             }
-            // Verificar disponibilidad
-            const isAvailable = await RentalRepository_1.rentalRepository.checkAvailability(rental.objectId, startDate, endDate);
-            if (!isAvailable) {
-                res.status(409).json({
-                    message: 'El objeto no está disponible en el rango de fechas solicitado'
-                });
-                return;
-            }
             // Calcular total si no se proporciona o validar
             const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; // Mínimo 1 día
@@ -113,7 +44,7 @@ class RentalController {
                 rental.total = calculatedTotal;
             }
             // Crear el alquiler
-            const newRental = await RentalRepository_1.rentalRepository.createRental({
+            const newRental = await rentalRepository.createRental({
                 objectId: rental.objectId,
                 startDate,
                 endDate,
@@ -122,7 +53,7 @@ class RentalController {
                 total: parseFloat(rental.total)
             });
             // Obtener el alquiler con el objeto relacionado
-            const rentalWithObject = await RentalRepository_1.rentalRepository.getRentalById(newRental.id);
+            const rentalWithObject = await rentalRepository.getRentalById(newRental.id);
             res.status(201).json(rentalWithObject);
         }
         catch (error) {
@@ -136,7 +67,8 @@ class RentalController {
     // Obtener todos los alquileres
     async getAllRentals(req, res) {
         try {
-            const rentals = await RentalRepository_1.rentalRepository.getAllRentals();
+            const rentalRepository = await (0, RentalRepository_1.getRentalRepository)();
+            const rentals = await rentalRepository.getAllRentals();
             res.status(200).json(rentals);
         }
         catch (error) {
@@ -155,7 +87,8 @@ class RentalController {
                 res.status(400).json({ message: 'ID de alquiler inválido' });
                 return;
             }
-            const rental = await RentalRepository_1.rentalRepository.getRentalById(id);
+            const rentalRepository = await (0, RentalRepository_1.getRentalRepository)();
+            const rental = await rentalRepository.getRentalById(id);
             if (!rental) {
                 res.status(404).json({ message: 'Alquiler no encontrado' });
                 return;
@@ -179,42 +112,32 @@ class RentalController {
                 return;
             }
             const rental = req.body;
+            const rentalRepository = await (0, RentalRepository_1.getRentalRepository)();
             // Obtener el alquiler existente
-            const existingRental = await RentalRepository_1.rentalRepository.getRentalById(id);
+            const existingRental = await rentalRepository.getRentalById(id);
             if (!existingRental) {
                 res.status(404).json({ message: 'Alquiler no encontrado' });
                 return;
             }
-            // Si se cambiaron fechas u objeto, verificar disponibilidad
-            if ((rental.startDate && rental.startDate !== existingRental.startDate.toISOString().split('T')[0]) ||
-                (rental.endDate && rental.endDate !== existingRental.endDate.toISOString().split('T')[0]) ||
-                (rental.objectId && rental.objectId !== existingRental.objectId)) {
+            // Validar fechas si se proporcionan
+            if (rental.startDate || rental.endDate) {
                 const startDate = rental.startDate ? new Date(rental.startDate) : existingRental.startDate;
                 const endDate = rental.endDate ? new Date(rental.endDate) : existingRental.endDate;
-                const objectId = rental.objectId || existingRental.objectId;
                 if (startDate >= endDate) {
                     res.status(400).json({ message: 'La fecha de inicio debe ser anterior a la fecha de fin' });
                     return;
                 }
-                // Verificar que el objeto exista si se cambia
-                if (rental.objectId && rental.objectId !== existingRental.objectId) {
-                    const object = await InventoryRepository_1.inventoryRepository.getItemById(rental.objectId);
-                    if (!object) {
-                        res.status(404).json({ message: 'Objeto no encontrado' });
-                        return;
-                    }
-                }
-                // Verificar disponibilidad excluyendo el alquiler actual
-                const isAvailable = await RentalRepository_1.rentalRepository.checkAvailability(objectId, startDate, endDate, id);
-                if (!isAvailable) {
-                    res.status(409).json({
-                        message: 'El objeto no está disponible en el rango de fechas solicitado'
-                    });
+            }
+            // Verificar que el objeto exista si se cambia
+            if (rental.objectId && rental.objectId !== existingRental.objectId) {
+                const object = await InventoryRepository_1.inventoryRepository.getItemById(rental.objectId);
+                if (!object) {
+                    res.status(404).json({ message: 'Objeto no encontrado' });
                     return;
                 }
             }
             // Actualizar el alquiler
-            const updatedRental = await RentalRepository_1.rentalRepository.updateRental(id, rental);
+            const updatedRental = await rentalRepository.updateRental(id, rental);
             res.status(200).json(updatedRental);
         }
         catch (error) {
@@ -233,12 +156,13 @@ class RentalController {
                 res.status(400).json({ message: 'ID de alquiler inválido' });
                 return;
             }
-            const rental = await RentalRepository_1.rentalRepository.getRentalById(id);
+            const rentalRepository = await (0, RentalRepository_1.getRentalRepository)();
+            const rental = await rentalRepository.getRentalById(id);
             if (!rental) {
                 res.status(404).json({ message: 'Alquiler no encontrado' });
                 return;
             }
-            await RentalRepository_1.rentalRepository.deleteRental(id);
+            await rentalRepository.deleteRental(id);
             res.status(200).json({
                 message: 'Alquiler eliminado correctamente',
                 id
@@ -266,7 +190,8 @@ class RentalController {
                 res.status(404).json({ message: 'Objeto no encontrado' });
                 return;
             }
-            const rentals = await RentalRepository_1.rentalRepository.getRentalsByObject(objectId);
+            const rentalRepository = await (0, RentalRepository_1.getRentalRepository)();
+            const rentals = await rentalRepository.getRentalsByObject(objectId);
             res.status(200).json(rentals);
         }
         catch (error) {
@@ -295,7 +220,8 @@ class RentalController {
                 res.status(400).json({ message: 'La fecha de inicio debe ser anterior o igual a la fecha de fin' });
                 return;
             }
-            const rentals = await RentalRepository_1.rentalRepository.getRentalsByDateRange(start, end);
+            const rentalRepository = await (0, RentalRepository_1.getRentalRepository)();
+            const rentals = await rentalRepository.getRentalsByDateRange(start, end);
             res.status(200).json(rentals);
         }
         catch (error) {

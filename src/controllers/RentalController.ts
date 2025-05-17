@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
-import { rentalRepository } from '../repositories/RentalRepository';
+import { getRentalRepository } from '../repositories/RentalRepository';
 import { inventoryRepository } from '../repositories/InventoryRepository';
 
 export class RentalController {
     // Crear un nuevo alquiler
     async createRental(req: Request, res: Response): Promise<void> {
         try {
+            const rentalRepository = await getRentalRepository();
             const rental = req.body;
 
             // Validar campos requeridos
@@ -76,6 +77,7 @@ export class RentalController {
     // Obtener todos los alquileres
     async getAllRentals(req: Request, res: Response): Promise<void> {
         try {
+            const rentalRepository = await getRentalRepository();
             const rentals = await rentalRepository.getAllRentals();
             res.status(200).json(rentals);
         } catch (error) {
@@ -96,6 +98,7 @@ export class RentalController {
                 return;
             }
 
+            const rentalRepository = await getRentalRepository();
             const rental = await rentalRepository.getRentalById(id);
             if (!rental) {
                 res.status(404).json({ message: 'Alquiler no encontrado' });
@@ -123,6 +126,7 @@ export class RentalController {
 
             const rental = req.body;
 
+            const rentalRepository = await getRentalRepository();
             // Obtener el alquiler existente
             const existingRental = await rentalRepository.getRentalById(id);
             if (!existingRental) {
@@ -171,6 +175,7 @@ export class RentalController {
                 return;
             }
 
+            const rentalRepository = await getRentalRepository();
             const rental = await rentalRepository.getRentalById(id);
             if (!rental) {
                 res.status(404).json({ message: 'Alquiler no encontrado' });
@@ -207,6 +212,7 @@ export class RentalController {
                 return;
             }
 
+            const rentalRepository = await getRentalRepository();
             const rentals = await rentalRepository.getRentalsByObject(objectId);
             res.status(200).json(rentals);
         } catch (error) {
@@ -241,6 +247,7 @@ export class RentalController {
                 return;
             }
 
+            const rentalRepository = await getRentalRepository();
             const rentals = await rentalRepository.getRentalsByDateRange(start, end);
             res.status(200).json(rentals);
         } catch (error) {

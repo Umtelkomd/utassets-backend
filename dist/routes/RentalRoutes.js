@@ -4,8 +4,6 @@ const express_1 = require("express");
 const RentalController_1 = require("../controllers/RentalController");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
 const router = (0, express_1.Router)();
-// Ruta para verificar disponibilidad
-router.get('/availability', authMiddleware_1.authMiddleware, RentalController_1.rentalController.checkAvailability);
 // Rutas CRUD para alquileres
 router.post('/', authMiddleware_1.authMiddleware, RentalController_1.rentalController.createRental);
 router.get('/', authMiddleware_1.authMiddleware, RentalController_1.rentalController.getAllRentals);
