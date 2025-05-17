@@ -126,6 +126,10 @@ class AuthController {
             console.log('Content-Type:', req.headers['content-type']);
             console.log('File:', file);
             console.log('=======================');
+            // Si se proporcionan firstName y lastName, combinarlos en fullName
+            if (userData.firstName && userData.lastName && !userData.fullName) {
+                userData.fullName = `${userData.firstName} ${userData.lastName}`;
+            }
             // Validar datos de entrada básicos
             if (!userData.email || !userData.password || !userData.fullName) {
                 console.log('Datos faltantes:', {
@@ -191,9 +195,14 @@ class AuthController {
                 res.status(400).json({ message: 'El email ya está registrado' });
                 return;
             }
-            // Si hay una imagen, agregar la ruta al usuario
+            // Si hay una imagen como archivo, agregar la ruta al usuario
             if (file) {
                 userData.imagePath = file.filename;
+            }
+            // Si se proporciona una URL de imagen directamente
+            else if (userData.imagePath && typeof userData.imagePath === 'string' && userData.imagePath.startsWith('http')) {
+                // Mantener la URL como está
+                console.log('Usando URL de imagen proporcionada:', userData.imagePath);
             }
             // Por defecto, los usuarios nuevos se registran como técnicos
             // Solo un administrador puede cambiar este valor posteriormente

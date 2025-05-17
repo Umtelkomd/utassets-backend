@@ -18,6 +18,7 @@ const MovementRoutes_1 = __importDefault(require("./routes/MovementRoutes"));
 const MaintenanceRoutes_1 = __importDefault(require("./routes/MaintenanceRoutes"));
 const ReportRoutes_1 = __importDefault(require("./routes/ReportRoutes"));
 const CommentRoutes_1 = __importDefault(require("./routes/CommentRoutes"));
+const RentalRoutes_1 = __importDefault(require("./routes/RentalRoutes"));
 const path_1 = __importDefault(require("path"));
 require("./scripts/initDirectories");
 const app = (0, express_1.default)();
@@ -50,6 +51,7 @@ app.use('/api/movements', MovementRoutes_1.default);
 app.use('/api/maintenance', MaintenanceRoutes_1.default);
 app.use('/api/reports', ReportRoutes_1.default);
 app.use('/api/comments', CommentRoutes_1.default);
+app.use('/api/rentals', RentalRoutes_1.default);
 // Inicializar la base de datos y el servidor
 data_source_1.AppDataSource.initialize()
     .then(() => {

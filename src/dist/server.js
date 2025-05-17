@@ -15,6 +15,7 @@ var MovementRoutes_1 = require("./routes/MovementRoutes");
 var MaintenanceRoutes_1 = require("./routes/MaintenanceRoutes");
 var ReportRoutes_1 = require("./routes/ReportRoutes");
 var CommentRoutes_1 = require("./routes/CommentRoutes");
+var RentalRoutes_1 = require("./routes/RentalRoutes");
 var path_1 = require("path");
 require("./scripts/initDirectories");
 var app = express_1["default"]();
@@ -47,6 +48,7 @@ app.use('/api/movements', MovementRoutes_1["default"]);
 app.use('/api/maintenance', MaintenanceRoutes_1["default"]);
 app.use('/api/reports', ReportRoutes_1["default"]);
 app.use('/api/comments', CommentRoutes_1["default"]);
+app.use('/api/rentals', RentalRoutes_1["default"]);
 // Inicializar la base de datos y el servidor
 data_source_1.AppDataSource.initialize()
     .then(function () {
