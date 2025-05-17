@@ -5,75 +5,6 @@ import { AppDataSource } from '../config/data-source';
 import { Inventory } from '../entity/Inventory';
 
 export class RentalController {
-    // Verificar disponibilidad de un objeto en un rango de fechas
-    async checkAvailability(req: Request, res: Response): Promise<void> {
-        try {
-            const { objectId, startDate, endDate } = req.query;
-
-            // Validar parámetros
-            if (!objectId || !startDate || !endDate) {
-                res.status(400).json({
-                    message: 'Se requieren objectId, startDate y endDate',
-                    available: false
-                });
-                return;
-            }
-
-            const objId = parseInt(objectId as string, 10);
-            const start = new Date(startDate as string);
-            const end = new Date(endDate as string);
-
-            // Validar que las fechas sean válidas
-            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-                res.status(400).json({
-                    message: 'Fechas inválidas',
-                    available: false
-                });
-                return;
-            }
-
-            // Validar que la fecha de inicio sea anterior a la fecha de fin
-            if (start >= end) {
-                res.status(400).json({
-                    message: 'La fecha de inicio debe ser anterior a la fecha de fin',
-                    available: false
-                });
-                return;
-            }
-
-            // Validar que el objeto exista
-            const object = await inventoryRepository.getItemById(objId);
-            if (!object) {
-                res.status(404).json({
-                    message: 'Objeto no encontrado',
-                    available: false
-                });
-                return;
-            }
-
-            // Verificar disponibilidad
-            const isAvailable = await rentalRepository.checkAvailability(objId, start, end);
-
-            res.status(200).json({
-                available: isAvailable,
-                object: {
-                    id: object.id,
-                    itemName: object.itemName,
-                    itemCode: object.itemCode
-                },
-                startDate: start,
-                endDate: end
-            });
-        } catch (error) {
-            console.error('Error al verificar disponibilidad:', error);
-            res.status(500).json({
-                message: 'Error al verificar disponibilidad',
-                error: error instanceof Error ? error.message : 'Error desconocido',
-                available: false
-            });
-        }
-    }
-
     // Crear un nuevo alquiler
     async createRental(req: Request, res: Response): Promise<void> {
         try {
@@ -109,20 +40,6 @@ export class RentalController {
             const object = await inventoryRepository.getItemById(rental.objectId);
             if (!object) {
                 res.status(404).json({ message: 'Objeto no encontrado' });
-                return;
-            }
-
-            // Verificar disponibilidad
-            const isAvailable = await rentalRepository.checkAvailability(
-                rental.objectId,
-                startDate,
-                endDate
-            );
-
-            if (!isAvailable) {
-                res.status(409).json({
-                    message: 'El objeto no está disponible en el rango de fechas solicitado'
-                });
                 return;
             }
 
@@ -215,42 +132,22 @@ export class RentalController {
                 return;
             }
 
-            // Si se cambiaron fechas u objeto, verificar disponibilidad
-            if (
-                (rental.startDate && rental.startDate !== existingRental.startDate.toISOString().split('T')[0]) ||
-                (rental.endDate && rental.endDate !== existingRental.endDate.toISOString().split('T')[0]) ||
-                (rental.objectId && rental.objectId !== existingRental.objectId)
-            ) {
+            // Validar fechas si se proporcionan
+            if (rental.startDate || rental.endDate) {
                 const startDate = rental.startDate ? new Date(rental.startDate) : existingRental.startDate;
                 const endDate = rental.endDate ? new Date(rental.endDate) : existingRental.endDate;
-                const objectId = rental.objectId || existingRental.objectId;
 
                 if (startDate >= endDate) {
                     res.status(400).json({ message: 'La fecha de inicio debe ser anterior a la fecha de fin' });
                     return;
                 }
+            }
 
-                // Verificar que el objeto exista si se cambia
-                if (rental.objectId && rental.objectId !== existingRental.objectId) {
-                    const object = await inventoryRepository.getItemById(rental.objectId);
-                    if (!object) {
-                        res.status(404).json({ message: 'Objeto no encontrado' });
-                        return;
-                    }
-                }
-
-                // Verificar disponibilidad excluyendo el alquiler actual
-                const isAvailable = await rentalRepository.checkAvailability(
-                    objectId,
-                    startDate,
-                    endDate,
-                    id
-                );
-
-                if (!isAvailable) {
-                    res.status(409).json({
-                        message: 'El objeto no está disponible en el rango de fechas solicitado'
-                    });
+            // Verificar que el objeto exista si se cambia
+            if (rental.objectId && rental.objectId !== existingRental.objectId) {
+                const object = await inventoryRepository.getItemById(rental.objectId);
+                if (!object) {
+                    res.status(404).json({ message: 'Objeto no encontrado' });
                     return;
                 }
             }

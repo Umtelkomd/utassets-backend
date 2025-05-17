@@ -153,35 +153,6 @@ var RentalRepository = /** @class */ (function (_super) {
             });
         });
     };
-    RentalRepository.prototype.checkAvailability = function (objectId, startDate, endDate, excludeRentalId) {
-        return __awaiter(this, void 0, Promise, function () {
-            var query, count;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        query = this.createQueryBuilder('rental')
-                            .where('rental.objectId = :objectId', { objectId: objectId })
-                            .andWhere(
-                        // Caso 1: La fecha de inicio o fin del alquiler existente está dentro del rango solicitado
-                        '(rental.startDate BETWEEN :startDate AND :endDate OR ' +
-                            'rental.endDate BETWEEN :startDate AND :endDate OR ' +
-                            // Caso 2: El rango solicitado está completamente dentro del alquiler existente
-                            '(:startDate BETWEEN rental.startDate AND rental.endDate AND ' +
-                            ':endDate BETWEEN rental.startDate AND rental.endDate) OR ' +
-                            // Caso 3: El rango solicitado abarca completamente un alquiler existente
-                            '(:startDate <= rental.startDate AND :endDate >= rental.endDate))', { startDate: startDate, endDate: endDate });
-                        // Si se proporciona un ID de alquiler para excluir (para actualizaciones)
-                        if (excludeRentalId) {
-                            query.andWhere('rental.id != :excludeRentalId', { excludeRentalId: excludeRentalId });
-                        }
-                        return [4 /*yield*/, query.getCount()];
-                    case 1:
-                        count = _a.sent();
-                        return [2 /*return*/, count === 0]; // Si no hay alquileres que se solapen, está disponible
-                }
-            });
-        });
-    };
     RentalRepository.prototype.getRentalsByObject = function (objectId) {
         return __awaiter(this, void 0, Promise, function () {
             return __generator(this, function (_a) {

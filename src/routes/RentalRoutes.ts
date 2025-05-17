@@ -4,9 +4,6 @@ import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 
-// Ruta para verificar disponibilidad
-router.get('/availability', authMiddleware, rentalController.checkAvailability);
-
 // Rutas CRUD para alquileres
 router.post('/', authMiddleware, rentalController.createRental);
 router.get('/', authMiddleware, rentalController.getAllRentals);
