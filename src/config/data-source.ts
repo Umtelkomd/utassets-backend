@@ -10,6 +10,7 @@ import { Project } from '../entity/Project';
 import { Maintenance } from '../entity/Maintenance';
 import { Report } from '../entity/Report';
 import { Comment } from '../entity/Comment';
+import { Rental } from '../entity/Rental';
 
 export const AppDataSource = new DataSource({
     type: "mysql",
@@ -30,7 +31,8 @@ export const AppDataSource = new DataSource({
         Project,
         Maintenance,
         Report,
-        Comment
+        Comment,
+        Rental
     ],
     migrations: [],
     subscribers: [],
