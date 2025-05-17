@@ -7,6 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 exports.__esModule = true;
 exports.Rental = void 0;
+require("reflect-metadata");
 var typeorm_1 = require("typeorm");
 var Inventory_1 = require("./Inventory");
 var Rental = /** @class */ (function () {
