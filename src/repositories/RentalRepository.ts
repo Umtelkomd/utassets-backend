@@ -54,12 +54,21 @@ export class RentalRepository extends Repository<Rental> {
         });
     }
 
-    async getRentalById(id: number): Promise<Rental | null> {
+    async getRentalById(id: number | string): Promise<Rental | null> {
+        const numericId = Number(id);
+        
+        // Si el ID es un número o puede convertirse a número, buscar por id numérico
+        if (!isNaN(numericId) && numericId > 0) {
+            return await this.findOne({
+                where: { id: numericId },
+                relations: { object: true }
+            });
+        }
+        
+        // Si no es un número válido, buscar por _id (MongoDB)
         return await this.findOne({
-            where: { id },
-            relations: {
-                object: true
-            }
+            where: { _id: id as string },
+            relations: { object: true }
         });
     }
 

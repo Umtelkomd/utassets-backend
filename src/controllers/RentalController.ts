@@ -92,19 +92,19 @@ export class RentalController {
     // Obtener un alquiler por ID
     async getRental(req: Request, res: Response): Promise<void> {
         try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id)) {
-                res.status(400).json({ message: 'ID de alquiler inválido' });
+            const id = req.params.id;
+            if (!id) {
+                res.status(400).json({ message: 'ID de alquiler no proporcionado' });
                 return;
             }
 
             const rentalRepository = await getRentalRepository();
             const rental = await rentalRepository.getRentalById(id);
+
             if (!rental) {
                 res.status(404).json({ message: 'Alquiler no encontrado' });
                 return;
             }
-
             res.status(200).json(rental);
         } catch (error) {
             console.error('Error al obtener el alquiler:', error);

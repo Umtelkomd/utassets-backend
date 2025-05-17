@@ -1,11 +1,15 @@
 import 'reflect-metadata';
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, ObjectIdColumn } from 'typeorm';
 import { Inventory } from './Inventory';
 
 @Entity('rental')
 export class Rental {
     @PrimaryGeneratedColumn()
     id!: number;
+
+    // Campo para compatibilidad con MongoDB
+    @ObjectIdColumn({ name: '_id', nullable: true })
+    _id?: string;
 
     @Column({ name: 'object_id' })
     objectId!: number;
