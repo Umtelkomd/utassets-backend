@@ -57,7 +57,16 @@ var Rental_1 = require("../entity/Rental");
 var RentalRepository = /** @class */ (function (_super) {
     __extends(RentalRepository, _super);
     function RentalRepository() {
-        return _super.call(this, Rental_1.Rental, data_source_1.AppDataSource.createEntityManager()) || this;
+        var _this = this;
+        if (!data_source_1.AppDataSource.isInitialized) {
+            data_source_1.initialize().then(function () {
+                console.log('Base de datos inicializada en RentalRepository');
+            })["catch"](function (error) {
+                console.error('Error al inicializar la base de datos:', error);
+            });
+        }
+        _this = _super.call(this, Rental_1.Rental, data_source_1.AppDataSource.manager) || this;
+        return _this;
     }
     RentalRepository.prototype.createRental = function (rental) {
         return __awaiter(this, void 0, Promise, function () {

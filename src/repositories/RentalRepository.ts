@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
-import { AppDataSource } from '../config/data-source';
+import { AppDataSource, initialize } from '../config/data-source';
 import { Rental } from '../entity/Rental';
 import { Inventory } from '../entity/Inventory';
 
@@ -15,7 +15,14 @@ interface RentalCreateDTO {
 
 export class RentalRepository extends Repository<Rental> {
     constructor() {
-        super(Rental, AppDataSource.createEntityManager());
+        if (!AppDataSource.isInitialized) {
+            initialize().then(() => {
+                console.log('Base de datos inicializada en RentalRepository');
+            }).catch(error => {
+                console.error('Error al inicializar la base de datos:', error);
+            });
+        }
+        super(Rental, AppDataSource.manager);
     }
 
     async createRental(rental: RentalCreateDTO): Promise<Rental> {
