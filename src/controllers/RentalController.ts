@@ -4,6 +4,17 @@ import { inventoryRepository } from '../repositories/InventoryRepository';
 import { RentalType } from '../entity/Rental';
 
 export class RentalController {
+    private static instance: RentalController;
+
+    private constructor() { }
+
+    public static getInstance(): RentalController {
+        if (!RentalController.instance) {
+            RentalController.instance = new RentalController();
+        }
+        return RentalController.instance;
+    }
+
     // Validaciones comunes para todos los tipos de alquiler
     static validateCommonFields(rental: any): { isValid: boolean; message?: string; status?: number } {
         // Validar campos requeridos según el tipo
@@ -155,7 +166,7 @@ export class RentalController {
             const rentalRepository = await getRentalRepository();
             const rentalData = req.body;
 
-            // Validaciones comunes
+            // Validaciones comunes usando el método estático
             const commonValidation = RentalController.validateCommonFields(rentalData);
             if (!commonValidation.isValid) {
                 res.status(commonValidation.status || 400).json({ message: commonValidation.message });
@@ -429,4 +440,4 @@ export class RentalController {
     }
 }
 
-export const rentalController = new RentalController(); 
+export const rentalController = RentalController.getInstance(); 
