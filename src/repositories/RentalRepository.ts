@@ -1,17 +1,42 @@
 import 'reflect-metadata';
 import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { AppDataSource, initialize } from '../config/data-source';
-import { Rental } from '../entity/Rental';
+import { Rental, RentalType } from '../entity/Rental';
 import { Inventory } from '../entity/Inventory';
 
-interface RentalCreateDTO {
+interface BaseRentalDTO {
     objectId: number;
     startDate: Date;
     endDate: Date;
     dailyCost: number;
-    peopleCount?: number | null;
     total: number;
+    type: RentalType;
+    comments?: string;
 }
+
+interface ItemRentalDTO extends BaseRentalDTO {
+    type: RentalType.ITEM;
+    peopleCount?: number | null;
+}
+
+interface VehicleRentalDTO extends BaseRentalDTO {
+    type: RentalType.VEHICLE;
+    dealerName: string;
+    dealerAddress: string;
+    dealerPhone: string;
+}
+
+interface HousingRentalDTO extends BaseRentalDTO {
+    type: RentalType.HOUSING;
+    guestCount: number;
+    address: string;
+    bedrooms: number;
+    bathrooms: number;
+    amenities?: string[] | string;
+    rules?: string;
+}
+
+type RentalCreateDTO = ItemRentalDTO | VehicleRentalDTO | HousingRentalDTO;
 
 export class RentalRepository extends Repository<Rental> {
     private static instance: RentalRepository;
@@ -31,15 +56,42 @@ export class RentalRepository extends Repository<Rental> {
     }
 
     async createRental(rental: RentalCreateDTO): Promise<Rental> {
-        const newRental = this.create({
+        // Crear objeto base del alquiler
+        const rentalData: any = {
             objectId: rental.objectId,
             startDate: rental.startDate,
             endDate: rental.endDate,
             dailyCost: rental.dailyCost,
-            peopleCount: rental.peopleCount || null,
-            total: rental.total
-        });
+            total: rental.total,
+            type: rental.type,
+            comments: rental.comments || null
+        };
 
+        // Agregar campos específicos según el tipo de alquiler
+        switch (rental.type) {
+            case RentalType.ITEM:
+                rentalData.peopleCount = rental.peopleCount || null;
+                break;
+
+            case RentalType.VEHICLE:
+                rentalData.dealerName = rental.dealerName;
+                rentalData.dealerAddress = rental.dealerAddress;
+                rentalData.dealerPhone = rental.dealerPhone;
+                break;
+
+            case RentalType.HOUSING:
+                rentalData.guestCount = rental.guestCount;
+                rentalData.address = rental.address;
+                rentalData.bedrooms = rental.bedrooms;
+                rentalData.bathrooms = rental.bathrooms;
+                rentalData.amenities = Array.isArray(rental.amenities) 
+                    ? rental.amenities 
+                    : (rental.amenities || '').split(',').map((a: string) => a.trim());
+                rentalData.rules = rental.rules || null;
+                break;
+        }
+
+        const newRental = this.create(rentalData);
         return await this.save(newRental);
     }
 
@@ -69,6 +121,14 @@ export class RentalRepository extends Repository<Rental> {
         return await this.findOne({
             where: { _id: id as string },
             relations: { object: true }
+        });
+    }
+    
+    async getRentalsByType(type: RentalType): Promise<Rental[]> {
+        return await this.find({
+            where: { type },
+            relations: { object: true },
+            order: { createdAt: 'DESC' }
         });
     }
 
