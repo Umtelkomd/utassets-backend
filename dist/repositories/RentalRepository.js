@@ -18,16 +18,61 @@ class RentalRepository extends typeorm_1.Repository {
         }
         return RentalRepository.instance;
     }
-    async createRental(rental) {
-        const newRental = this.create({
-            objectId: rental.objectId,
-            startDate: rental.startDate,
-            endDate: rental.endDate,
-            dailyCost: rental.dailyCost,
-            peopleCount: rental.peopleCount || null,
-            total: rental.total
-        });
-        return await this.save(newRental);
+    async createRental(rentalData) {
+        var _a;
+        try {
+            // Crear instancia del alquiler con los datos básicos
+            const rental = new Rental_1.Rental();
+            // Asignar campos comunes
+            rental.objectId = rentalData.objectId;
+            rental.startDate = rentalData.startDate;
+            rental.endDate = rentalData.endDate;
+            rental.dailyCost = rentalData.dailyCost;
+            rental.total = rentalData.total;
+            rental.type = rentalData.type;
+            rental.comments = rentalData.comments || undefined;
+            // Asignar campos específicos según el tipo de alquiler usando type guards
+            if (rentalData.type === Rental_1.RentalType.ITEM) {
+                const itemRental = rentalData;
+                rental.peopleCount = (_a = itemRental.peopleCount) !== null && _a !== void 0 ? _a : null;
+            }
+            else if (rentalData.type === Rental_1.RentalType.VEHICLE) {
+                const vehicleRental = rentalData;
+                rental.dealerName = vehicleRental.dealerName;
+                rental.dealerAddress = vehicleRental.dealerAddress;
+                rental.dealerPhone = vehicleRental.dealerPhone;
+            }
+            else if (rentalData.type === Rental_1.RentalType.HOUSING) {
+                const housingRental = rentalData;
+                rental.guestCount = housingRental.guestCount;
+                rental.address = housingRental.address;
+                rental.bedrooms = housingRental.bedrooms;
+                rental.bathrooms = housingRental.bathrooms;
+                if (housingRental.amenities !== undefined) {
+                    rental.amenities = Array.isArray(housingRental.amenities)
+                        ? housingRental.amenities
+                        : (housingRental.amenities || '').split(',').map(a => a.trim());
+                }
+                if (housingRental.rules !== undefined) {
+                    rental.rules = housingRental.rules;
+                }
+            }
+            // Guardar el alquiler en la base de datos
+            const savedRental = await this.save(rental);
+            // Obtener el alquiler con las relaciones cargadas
+            const rentalWithRelations = await this.findOne({
+                where: { id: savedRental.id },
+                relations: ['object']
+            });
+            if (!rentalWithRelations) {
+                throw new Error('No se pudo recuperar el alquiler recién creado');
+            }
+            return rentalWithRelations;
+        }
+        catch (error) {
+            console.error('Error en createRental:', error);
+            throw error;
+        }
     }
     async getAllRentals() {
         return await this.find({
@@ -40,11 +85,21 @@ class RentalRepository extends typeorm_1.Repository {
         });
     }
     async getRentalById(id) {
+        const numericId = Number(id);
+        // Solo buscar por ID numérico
+        if (isNaN(numericId) || numericId <= 0) {
+            return null;
+        }
         return await this.findOne({
-            where: { id },
-            relations: {
-                object: true
-            }
+            where: { id: numericId },
+            relations: { object: true }
+        });
+    }
+    async getRentalsByType(type) {
+        return await this.find({
+            where: { type },
+            relations: { object: true },
+            order: { createdAt: 'DESC' }
         });
     }
     async updateRental(id, rental) {

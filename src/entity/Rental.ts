@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, ObjectIdColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
 import { Inventory } from './Inventory';
 
 export enum RentalType {
@@ -12,10 +12,6 @@ export enum RentalType {
 export class Rental {
     @PrimaryGeneratedColumn()
     id!: number;
-
-    // Campo para compatibilidad con MongoDB
-    @ObjectIdColumn({ name: '_id', nullable: true })
-    _id?: string;
 
     @Column({ type: 'enum', enum: RentalType, default: RentalType.ITEM })
     type!: RentalType;

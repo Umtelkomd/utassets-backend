@@ -55,44 +55,67 @@ export class RentalRepository extends Repository<Rental> {
         return RentalRepository.instance;
     }
 
-    async createRental(rental: RentalCreateDTO): Promise<Rental> {
-        // Crear objeto base del alquiler
-        const rentalData: any = {
-            objectId: rental.objectId,
-            startDate: rental.startDate,
-            endDate: rental.endDate,
-            dailyCost: rental.dailyCost,
-            total: rental.total,
-            type: rental.type,
-            comments: rental.comments || null
-        };
+    async createRental(rentalData: RentalCreateDTO): Promise<Rental> {
+        try {
+            // Crear instancia del alquiler con los datos básicos
+            const rental = new Rental();
+            
+            // Asignar campos comunes
+            rental.objectId = rentalData.objectId;
+            rental.startDate = rentalData.startDate;
+            rental.endDate = rentalData.endDate;
+            rental.dailyCost = rentalData.dailyCost;
+            rental.total = rentalData.total;
+            rental.type = rentalData.type;
+            rental.comments = rentalData.comments || undefined;
 
-        // Agregar campos específicos según el tipo de alquiler
-        switch (rental.type) {
-            case RentalType.ITEM:
-                rentalData.peopleCount = rental.peopleCount || null;
-                break;
+            // Asignar campos específicos según el tipo de alquiler usando type guards
+            if (rentalData.type === RentalType.ITEM) {
+                const itemRental = rentalData as ItemRentalDTO;
+                rental.peopleCount = itemRental.peopleCount ?? null;
+            }
+            else if (rentalData.type === RentalType.VEHICLE) {
+                const vehicleRental = rentalData as VehicleRentalDTO;
+                rental.dealerName = vehicleRental.dealerName;
+                rental.dealerAddress = vehicleRental.dealerAddress;
+                rental.dealerPhone = vehicleRental.dealerPhone;
+            }
+            else if (rentalData.type === RentalType.HOUSING) {
+                const housingRental = rentalData as HousingRentalDTO;
+                rental.guestCount = housingRental.guestCount;
+                rental.address = housingRental.address;
+                rental.bedrooms = housingRental.bedrooms;
+                rental.bathrooms = housingRental.bathrooms;
+                
+                if (housingRental.amenities !== undefined) {
+                    rental.amenities = Array.isArray(housingRental.amenities) 
+                        ? housingRental.amenities 
+                        : (housingRental.amenities || '').split(',').map(a => a.trim());
+                }
+                
+                if (housingRental.rules !== undefined) {
+                    rental.rules = housingRental.rules;
+                }
+            }
 
-            case RentalType.VEHICLE:
-                rentalData.dealerName = rental.dealerName;
-                rentalData.dealerAddress = rental.dealerAddress;
-                rentalData.dealerPhone = rental.dealerPhone;
-                break;
-
-            case RentalType.HOUSING:
-                rentalData.guestCount = rental.guestCount;
-                rentalData.address = rental.address;
-                rentalData.bedrooms = rental.bedrooms;
-                rentalData.bathrooms = rental.bathrooms;
-                rentalData.amenities = Array.isArray(rental.amenities) 
-                    ? rental.amenities 
-                    : (rental.amenities || '').split(',').map((a: string) => a.trim());
-                rentalData.rules = rental.rules || null;
-                break;
+            // Guardar el alquiler en la base de datos
+            const savedRental = await this.save(rental);
+            
+            // Obtener el alquiler con las relaciones cargadas
+            const rentalWithRelations = await this.findOne({
+                where: { id: savedRental.id },
+                relations: ['object']
+            });
+            
+            if (!rentalWithRelations) {
+                throw new Error('No se pudo recuperar el alquiler recién creado');
+            }
+            
+            return rentalWithRelations;
+        } catch (error) {
+            console.error('Error en createRental:', error);
+            throw error;
         }
-
-        const newRental = this.create(rentalData);
-        return await this.save(newRental);
     }
 
     async getAllRentals(): Promise<Rental[]> {
@@ -109,17 +132,13 @@ export class RentalRepository extends Repository<Rental> {
     async getRentalById(id: number | string): Promise<Rental | null> {
         const numericId = Number(id);
         
-        // Si el ID es un número o puede convertirse a número, buscar por id numérico
-        if (!isNaN(numericId) && numericId > 0) {
-            return await this.findOne({
-                where: { id: numericId },
-                relations: { object: true }
-            });
+        // Solo buscar por ID numérico
+        if (isNaN(numericId) || numericId <= 0) {
+            return null;
         }
         
-        // Si no es un número válido, buscar por _id (MongoDB)
         return await this.findOne({
-            where: { _id: id as string },
+            where: { id: numericId },
             relations: { object: true }
         });
     }
