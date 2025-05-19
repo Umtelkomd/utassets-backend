@@ -5,9 +5,11 @@ import { RentalType } from '../entity/Rental';
 
 export class RentalController {
     // Validaciones comunes para todos los tipos de alquiler
-    private validateCommonFields(rental: any): { isValid: boolean; message?: string; status?: number } {
+    static validateCommonFields(rental: any): { isValid: boolean; message?: string; status?: number } {
         // Validar campos requeridos según el tipo
         let requiredFields: string[] = [];
+
+        console.log('Rental', rental);
 
         switch (rental.type) {
             case RentalType.ITEM:
@@ -154,7 +156,7 @@ export class RentalController {
             const rentalData = req.body;
 
             // Validaciones comunes
-            const commonValidation = this.validateCommonFields(rentalData);
+            const commonValidation = RentalController.validateCommonFields(rentalData);
             if (!commonValidation.isValid) {
                 res.status(commonValidation.status || 400).json({ message: commonValidation.message });
                 return;
