@@ -6,23 +6,33 @@ import { RentalType } from '../entity/Rental';
 export class RentalController {
     // Validaciones comunes para todos los tipos de alquiler
     private validateCommonFields(rental: any): { isValid: boolean; message?: string; status?: number } {
-        // Validar campos requeridos
-        const requiredFields = ['objectId', 'startDate', 'endDate', 'dailyCost', 'total', 'type'];
+        // Validar campos requeridos según el tipo
+        let requiredFields: string[] = [];
+
+        switch (rental.type) {
+            case RentalType.ITEM:
+                requiredFields = ['itemId', 'startDate', 'endDate', 'dailyCost', 'total', 'type'];
+                break;
+            case RentalType.VEHICLE:
+                requiredFields = ['vehicleId', 'startDate', 'endDate', 'dailyCost', 'total', 'type', 'dealerName', 'dealerAddress', 'dealerPhone'];
+                break;
+            case RentalType.HOUSING:
+                requiredFields = ['housingId', 'startDate', 'endDate', 'dailyCost', 'total', 'type', 'guestCount', 'address', 'bedrooms', 'bathrooms'];
+                break;
+            default:
+                return {
+                    isValid: false,
+                    message: `Tipo de alquiler no válido. Los tipos válidos son: ${Object.values(RentalType).join(', ')}`,
+                    status: 400
+                };
+        }
+
         const missingFields = requiredFields.filter(field => !rental[field]);
 
         if (missingFields.length > 0) {
-            return { 
-                isValid: false, 
-                message: 'Faltan campos requeridos',
-                status: 400
-            };
-        }
-
-        // Validar tipo de alquiler
-        if (!Object.values(RentalType).includes(rental.type)) {
-            return { 
-                isValid: false, 
-                message: `Tipo de alquiler no válido. Los tipos válidos son: ${Object.values(RentalType).join(', ')}`,
+            return {
+                isValid: false,
+                message: `Faltan campos requeridos: ${missingFields.join(', ')}`,
                 status: 400
             };
         }
@@ -32,16 +42,16 @@ export class RentalController {
         const endDate = new Date(rental.endDate);
 
         if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-            return { 
-                isValid: false, 
+            return {
+                isValid: false,
                 message: 'Fechas inválidas',
                 status: 400
             };
         }
 
         if (startDate >= endDate) {
-            return { 
-                isValid: false, 
+            return {
+                isValid: false,
                 message: 'La fecha de inicio debe ser anterior a la fecha de fin',
                 status: 400
             };
@@ -49,16 +59,16 @@ export class RentalController {
 
         // Validar que el costo diario y total sean números positivos
         if (isNaN(parseFloat(rental.dailyCost)) || parseFloat(rental.dailyCost) < 0) {
-            return { 
-                isValid: false, 
+            return {
+                isValid: false,
                 message: 'El costo diario debe ser un número positivo',
                 status: 400
             };
         }
 
         if (isNaN(parseFloat(rental.total)) || parseFloat(rental.total) < 0) {
-            return { 
-                isValid: false, 
+            return {
+                isValid: false,
                 message: 'El total debe ser un número positivo',
                 status: 400
             };
@@ -73,8 +83,8 @@ export class RentalController {
             case RentalType.ITEM:
                 // Validaciones para alquiler de artículos
                 if (rental.peopleCount && (isNaN(parseInt(rental.peopleCount, 10)) || parseInt(rental.peopleCount, 10) < 1)) {
-                    return { 
-                        isValid: false, 
+                    return {
+                        isValid: false,
                         message: 'El número de personas debe ser un entero mayor o igual a 1',
                         status: 400
                     };
@@ -85,10 +95,10 @@ export class RentalController {
                 // Validaciones para alquiler de vehículos
                 const vehicleFields = ['dealerName', 'dealerAddress', 'dealerPhone'];
                 const missingVehicleFields = vehicleFields.filter(field => !rental[field]);
-                
+
                 if (missingVehicleFields.length > 0) {
-                    return { 
-                        isValid: false, 
+                    return {
+                        isValid: false,
                         message: `Faltan campos requeridos para alquiler de vehículo: ${missingVehicleFields.join(', ')}`,
                         status: 400
                     };
@@ -99,34 +109,34 @@ export class RentalController {
                 // Validaciones para alquiler de viviendas
                 const housingRequiredFields = ['guestCount', 'address', 'bedrooms', 'bathrooms'];
                 const missingHousingFields = housingRequiredFields.filter(field => rental[field] === undefined || rental[field] === null);
-                
+
                 if (missingHousingFields.length > 0) {
-                    return { 
-                        isValid: false, 
+                    return {
+                        isValid: false,
                         message: `Faltan campos requeridos para alquiler de vivienda: ${missingHousingFields.join(', ')}`,
                         status: 400
                     };
                 }
 
                 if (isNaN(parseInt(rental.guestCount, 10)) || parseInt(rental.guestCount, 10) < 1) {
-                    return { 
-                        isValid: false, 
+                    return {
+                        isValid: false,
                         message: 'El número de huéspedes debe ser un entero mayor o igual a 1',
                         status: 400
                     };
                 }
 
                 if (isNaN(parseInt(rental.bedrooms, 10)) || parseInt(rental.bedrooms, 10) < 0) {
-                    return { 
-                        isValid: false, 
+                    return {
+                        isValid: false,
                         message: 'El número de habitaciones no puede ser negativo',
                         status: 400
                     };
                 }
 
                 if (isNaN(parseInt(rental.bathrooms, 10)) || parseInt(rental.bathrooms, 10) < 0) {
-                    return { 
-                        isValid: false, 
+                    return {
+                        isValid: false,
                         message: 'El número de baños no puede ser negativo',
                         status: 400
                     };
@@ -150,55 +160,51 @@ export class RentalController {
                 return;
             }
 
-            // Validaciones específicas por tipo
-            const typeValidation = this.validateRentalByType(rentalData);
-            if (!typeValidation.isValid) {
-                res.status(typeValidation.status || 400).json({ message: typeValidation.message });
-                return;
+            // Mapear el ID específico a objectId según el tipo
+            let objectId: number;
+            switch (rentalData.type) {
+                case RentalType.ITEM:
+                    objectId = parseInt(rentalData.itemId);
+                    break;
+                case RentalType.VEHICLE:
+                    objectId = parseInt(rentalData.vehicleId);
+                    break;
+                case RentalType.HOUSING:
+                    objectId = parseInt(rentalData.housingId);
+                    break;
+                default:
+                    res.status(400).json({ message: 'Tipo de alquiler no válido' });
+                    return;
             }
 
             // Validar que el objeto exista
-            const object = await inventoryRepository.getItemById(rentalData.objectId);
+            const object = await inventoryRepository.getItemById(objectId);
             if (!object) {
                 res.status(404).json({ message: 'Objeto no encontrado' });
                 return;
             }
 
-            // Calcular total basado en las fechas si no se proporciona
-            const startDate = new Date(rentalData.startDate);
-            const endDate = new Date(rentalData.endDate);
-            const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; // Mínimo 1 día
-            
-            // Si no se proporciona el total o no coincide con el cálculo, recalcular
-            const calculatedTotal = parseFloat(rentalData.dailyCost) * diffDays;
-            if (!rentalData.total || Math.abs(calculatedTotal - parseFloat(rentalData.total)) > 0.01) {
-                rentalData.total = calculatedTotal;
-            }
-
-            // Asegurar que los campos numéricos sean números
+            // Preparar los datos del alquiler
             const rentalToCreate = {
                 ...rentalData,
-                startDate,
-                endDate,
+                objectId,
+                startDate: new Date(rentalData.startDate),
+                endDate: new Date(rentalData.endDate),
                 dailyCost: parseFloat(rentalData.dailyCost),
                 total: parseFloat(rentalData.total),
                 // Convertir campos específicos según el tipo
-                ...(rentalData.peopleCount !== undefined && { 
-                    peopleCount: parseInt(rentalData.peopleCount, 10) 
+                ...(rentalData.type === RentalType.ITEM && rentalData.peopleCount !== undefined && {
+                    peopleCount: parseInt(rentalData.peopleCount, 10)
                 }),
-                ...(rentalData.guestCount !== undefined && { 
-                    guestCount: parseInt(rentalData.guestCount, 10) 
-                }),
-                ...(rentalData.bedrooms !== undefined && { 
-                    bedrooms: parseInt(rentalData.bedrooms, 10) 
-                }),
-                ...(rentalData.bathrooms !== undefined && { 
-                    bathrooms: parseInt(rentalData.bathrooms, 10) 
-                }),
-                // Convertir amenities a array si es una cadena
-                ...(rentalData.amenities && typeof rentalData.amenities === 'string' && { 
-                    amenities: rentalData.amenities.split(',').map((a: string) => a.trim()) 
+                ...(rentalData.type === RentalType.HOUSING && {
+                    guestCount: parseInt(rentalData.guestCount, 10),
+                    bedrooms: parseInt(rentalData.bedrooms, 10),
+                    bathrooms: parseInt(rentalData.bathrooms, 10),
+                    ...(rentalData.amenities && {
+                        amenities: Array.isArray(rentalData.amenities)
+                            ? rentalData.amenities
+                            : rentalData.amenities.split(',').map((a: string) => a.trim())
+                    })
                 })
             };
 
@@ -223,9 +229,9 @@ export class RentalController {
         try {
             const rentalRepository = await getRentalRepository();
             const { type } = req.query;
-            
+
             let rentals;
-            
+
             if (type && Object.values(RentalType).includes(type as RentalType)) {
                 // Filtrar por tipo si se proporciona un tipo válido
                 rentals = await rentalRepository.getRentalsByType(type as RentalType);
@@ -239,7 +245,7 @@ export class RentalController {
                 // Si no se proporciona tipo, devolver todos los alquileres
                 rentals = await rentalRepository.getAllRentals();
             }
-            
+
             res.status(200).json(rentals);
         } catch (error) {
             console.error('Error al obtener los alquileres:', error);
