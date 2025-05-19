@@ -166,9 +166,12 @@ export class RentalController {
             const rentalRepository = await getRentalRepository();
             const rentalData = req.body;
 
+            console.log('Datos recibidos en createRental:', rentalData);
+
             // Validaciones comunes usando el método estático
             const commonValidation = RentalController.validateCommonFields(rentalData);
             if (!commonValidation.isValid) {
+                console.log('Error en validación común:', commonValidation);
                 res.status(commonValidation.status || 400).json({ message: commonValidation.message });
                 return;
             }
