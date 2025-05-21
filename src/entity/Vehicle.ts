@@ -33,9 +33,6 @@ export class Vehicle {
     @Column({ type: 'int' })
     year: number;
 
-    @Column({ type: 'varchar', length: 17, unique: true, nullable: true })
-    vin: string | null;
-
     @Column({ type: 'varchar', length: 30, nullable: true })
     color: string | null;
 

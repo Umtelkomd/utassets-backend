@@ -18,9 +18,6 @@ export class VehicleController {
             if (vehicle.licensePlate === '') {
                 vehicle.licensePlate = null;
             }
-            if (vehicle.vin === '') {
-                vehicle.vin = null;
-            }
 
             // Si hay una imagen, agregar la ruta al vehículo
             if (file) {
@@ -95,7 +92,7 @@ export class VehicleController {
                 vehicle.technicalRevisionExpiryDate = new Date(vehicle.technicalRevisionExpiryDate);
             }
 
-            // Verificar si ya existe un vehículo con la misma placa o VIN
+            // Verificar si ya existe un vehículo con la misma placa
             if (vehicle.licensePlate) {
                 const existingVehicleByPlate = await vehicleRepository.getVehicleByLicensePlate(vehicle.licensePlate);
                 if (existingVehicleByPlate) {
@@ -106,21 +103,6 @@ export class VehicleController {
                     res.status(400).json({
                         message: 'Ya existe un vehículo con esa placa',
                         existingVehicle: existingVehicleByPlate
-                    });
-                    return;
-                }
-            }
-
-            if (vehicle.vin) {
-                const existingVehicleByVin = await vehicleRepository.getVehicleByVin(vehicle.vin);
-                if (existingVehicleByVin) {
-                    // Si hay error y se subió una imagen, eliminarla
-                    if (file) {
-                        fs.unlinkSync(file.path);
-                    }
-                    res.status(400).json({
-                        message: 'Ya existe un vehículo con ese VIN',
-                        existingVehicle: existingVehicleByVin
                     });
                     return;
                 }
@@ -258,9 +240,6 @@ export class VehicleController {
             if (vehicle.licensePlate === '') {
                 vehicle.licensePlate = null;
             }
-            if (vehicle.vin === '') {
-                vehicle.vin = null;
-            }
 
             // Obtener el vehículo existente
             const existingVehicle = await vehicleRepository.getVehicleById(id);
@@ -321,7 +300,7 @@ export class VehicleController {
                 vehicle.technicalRevisionExpiryDate = new Date(vehicle.technicalRevisionExpiryDate);
             }
 
-            // Verificar si ya existe otro vehículo con la misma placa o VIN
+            // Verificar si ya existe otro vehículo con la misma placa
             if (vehicle.licensePlate) {
                 const existingVehicleByPlate = await vehicleRepository.getVehicleByLicensePlate(vehicle.licensePlate);
                 if (existingVehicleByPlate && existingVehicleByPlate.id !== id) {
@@ -333,16 +312,6 @@ export class VehicleController {
                 }
             }
 
-            if (vehicle.vin) {
-                const existingVehicleByVin = await vehicleRepository.getVehicleByVin(vehicle.vin);
-                if (existingVehicleByVin && existingVehicleByVin.id !== id) {
-                    if (file) {
-                        fs.unlinkSync(file.path);
-                    }
-                    res.status(400).json({ message: 'Ya existe otro vehículo con ese VIN' });
-                    return;
-                }
-            }
             console.log(vehicle, 'vehicle');
             // Manejar usuarios responsables
             if (vehicle.responsibleUsers) {

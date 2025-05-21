@@ -8,7 +8,6 @@ interface VehicleCreateDTO {
     brand: string;
     model: string;
     year: number;
-    vin?: string | null;
     color?: string | null;
     vehicleStatus: VehicleStatus;
     mileage?: number | null;
@@ -33,7 +32,6 @@ export class VehicleRepository extends Repository<Vehicle> {
             brand: vehicle.brand,
             model: vehicle.model,
             year: vehicle.year,
-            vin: vehicle.vin || null,
             color: vehicle.color || null,
             vehicleStatus: vehicle.vehicleStatus,
             mileage: vehicle.mileage || null,
@@ -71,13 +69,10 @@ export class VehicleRepository extends Repository<Vehicle> {
 
     async getVehicleByLicensePlate(licensePlate: string): Promise<Vehicle | null> {
         return await this.findOne({
-            where: { licensePlate }
-        });
-    }
-
-    async getVehicleByVin(vin: string): Promise<Vehicle | null> {
-        return await this.findOne({
-            where: { vin }
+            where: { licensePlate },
+            relations: {
+                responsibleUsers: true
+            }
         });
     }
 
@@ -98,7 +93,6 @@ export class VehicleRepository extends Repository<Vehicle> {
         if (vehicle.brand !== undefined) existingVehicle.brand = vehicle.brand;
         if (vehicle.model !== undefined) existingVehicle.model = vehicle.model;
         if (vehicle.year !== undefined) existingVehicle.year = vehicle.year;
-        if (vehicle.vin !== undefined) existingVehicle.vin = vehicle.vin;
         if (vehicle.color !== undefined) existingVehicle.color = vehicle.color;
         if (vehicle.vehicleStatus !== undefined) existingVehicle.vehicleStatus = vehicle.vehicleStatus;
         if (vehicle.mileage !== undefined) existingVehicle.mileage = vehicle.mileage;
