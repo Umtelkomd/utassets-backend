@@ -1,446 +1,171 @@
 import { Request, Response } from 'express';
+import { Repository } from 'typeorm';
+import { Rental, RentalType } from '../entity/Rental';
+import { RentalStrategyFactory } from '../strategies/RentalStrategyFactory';
+import { ValidationResult } from '../strategies/RentalStrategy';
 import { getRentalRepository } from '../repositories/RentalRepository';
-import { inventoryRepository } from '../repositories/InventoryRepository';
-import { RentalType } from '../entity/Rental';
 
 export class RentalController {
-    private static instance: RentalController;
+    private repository!: Repository<Rental>;
+    private strategyFactory: RentalStrategyFactory;
 
-    private constructor() { }
-
-    public static getInstance(): RentalController {
-        if (!RentalController.instance) {
-            RentalController.instance = new RentalController();
-        }
-        return RentalController.instance;
+    constructor() {
+        this.strategyFactory = RentalStrategyFactory.getInstance();
+        this.initializeRepository();
     }
 
-    // Validaciones comunes para todos los tipos de alquiler
-    static validateCommonFields(rental: any): { isValid: boolean; message?: string; status?: number } {
-        // Validar campos requeridos según el tipo
-        let requiredFields: string[] = [];
-
-        console.log('Rental', rental);
-
-        switch (rental.type) {
-            case RentalType.ITEM:
-                requiredFields = ['itemId', 'startDate', 'endDate', 'dailyCost', 'total', 'type'];
-                break;
-            case RentalType.VEHICLE:
-                requiredFields = ['vehicleId', 'startDate', 'endDate', 'dailyCost', 'total', 'type', 'dealerName', 'dealerAddress', 'dealerPhone'];
-                break;
-            case RentalType.HOUSING:
-                requiredFields = ['housingId', 'startDate', 'endDate', 'dailyCost', 'total', 'type', 'guestCount', 'address', 'bedrooms', 'bathrooms'];
-                break;
-            default:
-                return {
-                    isValid: false,
-                    message: `Tipo de alquiler no válido. Los tipos válidos son: ${Object.values(RentalType).join(', ')}`,
-                    status: 400
-                };
-        }
-
-        const missingFields = requiredFields.filter(field => !rental[field]);
-
-        if (missingFields.length > 0) {
-            return {
-                isValid: false,
-                message: `Faltan campos requeridos: ${missingFields.join(', ')}`,
-                status: 400
-            };
-        }
-
-        // Validar fechas
-        const startDate = new Date(rental.startDate);
-        const endDate = new Date(rental.endDate);
-
-        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-            return {
-                isValid: false,
-                message: 'Fechas inválidas',
-                status: 400
-            };
-        }
-
-        if (startDate >= endDate) {
-            return {
-                isValid: false,
-                message: 'La fecha de inicio debe ser anterior a la fecha de fin',
-                status: 400
-            };
-        }
-
-        // Validar que el costo diario y total sean números positivos
-        if (isNaN(parseFloat(rental.dailyCost)) || parseFloat(rental.dailyCost) < 0) {
-            return {
-                isValid: false,
-                message: 'El costo diario debe ser un número positivo',
-                status: 400
-            };
-        }
-
-        if (isNaN(parseFloat(rental.total)) || parseFloat(rental.total) < 0) {
-            return {
-                isValid: false,
-                message: 'El total debe ser un número positivo',
-                status: 400
-            };
-        }
-
-        return { isValid: true };
-    }
-
-    // Validaciones específicas para cada tipo de alquiler
-    private validateRentalByType(rental: any): { isValid: boolean; message?: string; status?: number } {
-        switch (rental.type) {
-            case RentalType.ITEM:
-                // Validaciones para alquiler de artículos
-                if (rental.peopleCount && (isNaN(parseInt(rental.peopleCount, 10)) || parseInt(rental.peopleCount, 10) < 1)) {
-                    return {
-                        isValid: false,
-                        message: 'El número de personas debe ser un entero mayor o igual a 1',
-                        status: 400
-                    };
-                }
-                break;
-
-            case RentalType.VEHICLE:
-                // Validaciones para alquiler de vehículos
-                const vehicleFields = ['dealerName', 'dealerAddress', 'dealerPhone'];
-                const missingVehicleFields = vehicleFields.filter(field => !rental[field]);
-
-                if (missingVehicleFields.length > 0) {
-                    return {
-                        isValid: false,
-                        message: `Faltan campos requeridos para alquiler de vehículo: ${missingVehicleFields.join(', ')}`,
-                        status: 400
-                    };
-                }
-                break;
-
-            case RentalType.HOUSING:
-                // Validaciones para alquiler de viviendas
-                const housingRequiredFields = ['guestCount', 'address', 'bedrooms', 'bathrooms'];
-                const missingHousingFields = housingRequiredFields.filter(field => rental[field] === undefined || rental[field] === null);
-
-                if (missingHousingFields.length > 0) {
-                    return {
-                        isValid: false,
-                        message: `Faltan campos requeridos para alquiler de vivienda: ${missingHousingFields.join(', ')}`,
-                        status: 400
-                    };
-                }
-
-                if (isNaN(parseInt(rental.guestCount, 10)) || parseInt(rental.guestCount, 10) < 1) {
-                    return {
-                        isValid: false,
-                        message: 'El número de huéspedes debe ser un entero mayor o igual a 1',
-                        status: 400
-                    };
-                }
-
-                if (isNaN(parseInt(rental.bedrooms, 10)) || parseInt(rental.bedrooms, 10) < 0) {
-                    return {
-                        isValid: false,
-                        message: 'El número de habitaciones no puede ser negativo',
-                        status: 400
-                    };
-                }
-
-                if (isNaN(parseInt(rental.bathrooms, 10)) || parseInt(rental.bathrooms, 10) < 0) {
-                    return {
-                        isValid: false,
-                        message: 'El número de baños no puede ser negativo',
-                        status: 400
-                    };
-                }
-                break;
-        }
-
-        return { isValid: true };
+    private async initializeRepository() {
+        this.repository = await getRentalRepository();
     }
 
     // Crear un nuevo alquiler
-    async createRental(req: Request, res: Response): Promise<void> {
+    async create(req: Request, res: Response): Promise<Response> {
         try {
-            const rentalRepository = await getRentalRepository();
-            const rentalData = req.body;
+            const { type, metadata = {}, ...rentalData } = req.body;
+            const rentalType = type as RentalType;
 
-            console.log('Datos recibidos en createRental:', rentalData);
-
-            // Validaciones comunes usando el método estático
-            const commonValidation = RentalController.validateCommonFields(rentalData);
-            if (!commonValidation.isValid) {
-                console.log('Error en validación común:', commonValidation);
-                res.status(commonValidation.status || 400).json({ message: commonValidation.message });
-                return;
-            }
-
-            // Mapear el ID específico a objectId según el tipo
-            let objectId: number;
-            switch (rentalData.type) {
-                case RentalType.ITEM:
-                    objectId = parseInt(rentalData.itemId);
-                    break;
-                case RentalType.VEHICLE:
-                    objectId = parseInt(rentalData.vehicleId);
-                    break;
-                case RentalType.HOUSING:
-                    objectId = parseInt(rentalData.housingId);
-                    break;
-                default:
-                    res.status(400).json({ message: 'Tipo de alquiler no válido' });
-                    return;
-            }
-
-            // Validar que el objeto exista
-            const object = await inventoryRepository.getItemById(objectId);
-            if (!object) {
-                res.status(404).json({ message: 'Objeto no encontrado' });
-                return;
-            }
-
-            // Preparar los datos del alquiler
-            const rentalToCreate = {
+            // Convertir fechas de string a Date
+            const rentalWithDates = {
                 ...rentalData,
-                objectId,
                 startDate: new Date(rentalData.startDate),
-                endDate: new Date(rentalData.endDate),
-                dailyCost: parseFloat(rentalData.dailyCost),
-                total: parseFloat(rentalData.total),
-                // Convertir campos específicos según el tipo
-                ...(rentalData.type === RentalType.ITEM && rentalData.peopleCount !== undefined && {
-                    peopleCount: parseInt(rentalData.peopleCount, 10)
-                }),
-                ...(rentalData.type === RentalType.HOUSING && {
-                    guestCount: parseInt(rentalData.guestCount, 10),
-                    bedrooms: parseInt(rentalData.bedrooms, 10),
-                    bathrooms: parseInt(rentalData.bathrooms, 10),
-                    ...(rentalData.amenities && {
-                        amenities: Array.isArray(rentalData.amenities)
-                            ? rentalData.amenities
-                            : rentalData.amenities.split(',').map((a: string) => a.trim())
-                    })
-                })
+                endDate: new Date(rentalData.endDate)
             };
 
+            // Obtener la estrategia correspondiente
+            const strategy = this.strategyFactory.getStrategy(rentalType);
+
+            // Validar campos requeridos
+            const requiredFields = strategy.getRequiredFields();
+            const missingFields = requiredFields.filter(field => {
+                // Buscar el campo tanto en la raíz como en metadata
+                return !rentalWithDates[field] && !metadata[field];
+            });
+
+            if (missingFields.length > 0) {
+                return res.status(400).json({
+                    message: `Campos requeridos faltantes: ${missingFields.join(', ')}`,
+                    requiredFields: strategy.getRequiredFields(),
+                    specificFields: strategy.getSpecificFields()
+                });
+            }
+
             // Crear el alquiler
-            const newRental = await rentalRepository.createRental(rentalToCreate);
+            const rental = new Rental();
+            Object.assign(rental, {
+                type: rentalType,
+                ...rentalWithDates,
+                metadata: strategy.prepareMetadata({ ...rentalWithDates, ...metadata })
+            });
 
-            // Obtener el alquiler con el objeto relacionado
-            const rentalWithObject = await rentalRepository.getRentalById(newRental.id);
+            // Validar el alquiler
+            const validation = strategy.validate(rental);
+            if (!validation.isValid) {
+                return res.status(validation.status || 400).json({
+                    message: validation.message
+                });
+            }
 
-            res.status(201).json(rentalWithObject);
+            // Calcular el total
+            rental.total = strategy.calculateTotal(rental);
+
+            // Guardar el alquiler
+            const result = await this.repository.save(rental);
+            return res.status(201).json(result);
         } catch (error) {
-            console.error('Error al crear el alquiler:', error);
-            res.status(500).json({
+            console.error('Error detallado al crear el alquiler:', error);
+            return res.status(400).json({
                 message: 'Error al crear el alquiler',
-                error: error instanceof Error ? error.message : 'Error desconocido'
+                error: error instanceof Error ? {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                } : error
             });
         }
     }
 
-    // Obtener todos los alquileres con filtro opcional por tipo
-    async getAllRentals(req: Request, res: Response): Promise<void> {
+    // Obtener todos los alquileres
+    async getAll(req: Request, res: Response): Promise<Response> {
         try {
-            const rentalRepository = await getRentalRepository();
-            const { type } = req.query;
-
-            let rentals;
-
-            if (type && Object.values(RentalType).includes(type as RentalType)) {
-                // Filtrar por tipo si se proporciona un tipo válido
-                rentals = await rentalRepository.getRentalsByType(type as RentalType);
-            } else if (type) {
-                // Si se proporciona un tipo pero no es válido, devolver error
-                res.status(400).json({
-                    message: `Tipo de alquiler no válido. Los tipos válidos son: ${Object.values(RentalType).join(', ')}`
-                });
-                return;
-            } else {
-                // Si no se proporciona tipo, devolver todos los alquileres
-                rentals = await rentalRepository.getAllRentals();
-            }
-
-            res.status(200).json(rentals);
+            const rentals = await this.repository.find();
+            return res.json(rentals);
         } catch (error) {
-            console.error('Error al obtener los alquileres:', error);
-            res.status(500).json({
-                message: 'Error al obtener los alquileres',
-                error: error instanceof Error ? error.message : 'Error desconocido'
-            });
+            return res.status(500).json({ message: 'Error al obtener los alquileres', error });
         }
     }
 
     // Obtener un alquiler por ID
-    async getRental(req: Request, res: Response): Promise<void> {
+    async getById(req: Request, res: Response): Promise<Response> {
         try {
-            const id = req.params.id;
-            if (!id) {
-                res.status(400).json({ message: 'ID de alquiler no proporcionado' });
-                return;
-            }
-
-            const rentalRepository = await getRentalRepository();
-            const rental = await rentalRepository.getRentalById(id);
-
+            const rental = await this.repository.findOne({ where: { id: Number(req.params.id) } });
             if (!rental) {
-                res.status(404).json({ message: 'Alquiler no encontrado' });
-                return;
+                return res.status(404).json({ message: 'Alquiler no encontrado' });
             }
-            res.status(200).json(rental);
+            return res.json(rental);
         } catch (error) {
-            console.error('Error al obtener el alquiler:', error);
-            res.status(500).json({
-                message: 'Error al obtener el alquiler',
-                error: error instanceof Error ? error.message : 'Error desconocido'
-            });
+            return res.status(500).json({ message: 'Error al obtener el alquiler', error });
         }
     }
 
     // Actualizar un alquiler
-    async updateRental(req: Request, res: Response): Promise<void> {
+    async update(req: Request, res: Response): Promise<Response> {
         try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id)) {
-                res.status(400).json({ message: 'ID de alquiler inválido' });
-                return;
+            const rental = await this.repository.findOne({ where: { id: Number(req.params.id) } });
+            if (!rental) {
+                return res.status(404).json({ message: 'Alquiler no encontrado' });
             }
 
-            const rental = req.body;
+            const strategy = this.strategyFactory.getStrategy(rental.type);
+            const updatedData = {
+                ...req.body,
+                metadata: strategy.prepareMetadata(req.body)
+            };
 
-            const rentalRepository = await getRentalRepository();
-            // Obtener el alquiler existente
-            const existingRental = await rentalRepository.getRentalById(id);
-            if (!existingRental) {
-                res.status(404).json({ message: 'Alquiler no encontrado' });
-                return;
+            // Validar el alquiler actualizado
+            const validation = strategy.validate({ ...rental, ...updatedData });
+            if (!validation.isValid) {
+                return res.status(validation.status || 400).json({
+                    message: validation.message
+                });
             }
 
-            // Validar fechas si se proporcionan
-            if (rental.startDate || rental.endDate) {
-                const startDate = rental.startDate ? new Date(rental.startDate) : existingRental.startDate;
-                const endDate = rental.endDate ? new Date(rental.endDate) : existingRental.endDate;
+            // Calcular el nuevo total
+            updatedData.total = strategy.calculateTotal({ ...rental, ...updatedData });
 
-                if (startDate >= endDate) {
-                    res.status(400).json({ message: 'La fecha de inicio debe ser anterior a la fecha de fin' });
-                    return;
-                }
-            }
-
-            // Verificar que el objeto exista si se cambia
-            if (rental.objectId && rental.objectId !== existingRental.objectId) {
-                const object = await inventoryRepository.getItemById(rental.objectId);
-                if (!object) {
-                    res.status(404).json({ message: 'Objeto no encontrado' });
-                    return;
-                }
-            }
-
-            // Actualizar el alquiler
-            const updatedRental = await rentalRepository.updateRental(id, rental);
-            res.status(200).json(updatedRental);
+            this.repository.merge(rental, updatedData);
+            const result = await this.repository.save(rental);
+            return res.json(result);
         } catch (error) {
-            console.error('Error al actualizar el alquiler:', error);
-            res.status(500).json({
-                message: 'Error al actualizar el alquiler',
-                error: error instanceof Error ? error.message : 'Error desconocido'
-            });
+            return res.status(400).json({ message: 'Error al actualizar el alquiler', error });
         }
     }
 
     // Eliminar un alquiler
-    async deleteRental(req: Request, res: Response): Promise<void> {
+    async delete(req: Request, res: Response): Promise<Response> {
         try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id)) {
-                res.status(400).json({ message: 'ID de alquiler inválido' });
-                return;
-            }
-
-            const rentalRepository = await getRentalRepository();
-            const rental = await rentalRepository.getRentalById(id);
+            const rental = await this.repository.findOne({ where: { id: Number(req.params.id) } });
             if (!rental) {
-                res.status(404).json({ message: 'Alquiler no encontrado' });
-                return;
+                return res.status(404).json({ message: 'Alquiler no encontrado' });
             }
 
-            await rentalRepository.deleteRental(id);
-            res.status(200).json({
-                message: 'Alquiler eliminado correctamente',
-                id
-            });
+            await this.repository.remove(rental);
+            return res.status(204).send();
         } catch (error) {
-            console.error('Error al eliminar el alquiler:', error);
-            res.status(500).json({
-                message: 'Error al eliminar el alquiler',
-                error: error instanceof Error ? error.message : 'Error desconocido'
-            });
+            return res.status(500).json({ message: 'Error al eliminar el alquiler', error });
         }
     }
 
-    // Obtener alquileres por objeto
-    async getRentalsByObject(req: Request, res: Response): Promise<void> {
+    // Obtener campos requeridos para un tipo de alquiler
+    async getRequiredFields(req: Request, res: Response): Promise<Response> {
         try {
-            const objectId = parseInt(req.params.objectId, 10);
-            if (isNaN(objectId)) {
-                res.status(400).json({ message: 'ID de objeto inválido' });
-                return;
-            }
-
-            // Verificar que el objeto exista
-            const object = await inventoryRepository.getItemById(objectId);
-            if (!object) {
-                res.status(404).json({ message: 'Objeto no encontrado' });
-                return;
-            }
-
-            const rentalRepository = await getRentalRepository();
-            const rentals = await rentalRepository.getRentalsByObject(objectId);
-            res.status(200).json(rentals);
-        } catch (error) {
-            console.error('Error al obtener los alquileres del objeto:', error);
-            res.status(500).json({
-                message: 'Error al obtener los alquileres del objeto',
-                error: error instanceof Error ? error.message : 'Error desconocido'
+            const { type } = req.params;
+            const strategy = this.strategyFactory.getStrategy(type as RentalType);
+            return res.json({
+                requiredFields: strategy.getRequiredFields(),
+                specificFields: strategy.getSpecificFields()
             });
+        } catch (error) {
+            return res.status(400).json({ message: 'Error al obtener los campos requeridos', error });
         }
     }
-
-    // Obtener alquileres por rango de fechas
-    async getRentalsByDateRange(req: Request, res: Response): Promise<void> {
-        try {
-            const { startDate, endDate } = req.query;
-
-            if (!startDate || !endDate) {
-                res.status(400).json({ message: 'Se requieren startDate y endDate' });
-                return;
-            }
-
-            const start = new Date(startDate as string);
-            const end = new Date(endDate as string);
-
-            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-                res.status(400).json({ message: 'Fechas inválidas' });
-                return;
-            }
-
-            if (start > end) {
-                res.status(400).json({ message: 'La fecha de inicio debe ser anterior o igual a la fecha de fin' });
-                return;
-            }
-
-            const rentalRepository = await getRentalRepository();
-            const rentals = await rentalRepository.getRentalsByDateRange(start, end);
-            res.status(200).json(rentals);
-        } catch (error) {
-            console.error('Error al obtener los alquileres por rango de fechas:', error);
-            res.status(500).json({
-                message: 'Error al obtener los alquileres por rango de fechas',
-                error: error instanceof Error ? error.message : 'Error desconocido'
-            });
-        }
-    }
-}
-
-export const rentalController = RentalController.getInstance(); 
+} 

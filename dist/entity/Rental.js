@@ -10,9 +10,10 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Rental = exports.RentalType = void 0;
-require("reflect-metadata");
 const typeorm_1 = require("typeorm");
 const Inventory_1 = require("./Inventory");
+const Vehicle_1 = require("./Vehicle");
+const Housing_1 = require("./Housing");
 var RentalType;
 (function (RentalType) {
     RentalType["ITEM"] = "item";
@@ -20,30 +21,43 @@ var RentalType;
     RentalType["HOUSING"] = "housing";
 })(RentalType || (exports.RentalType = RentalType = {}));
 let Rental = class Rental {
-    validateDates() {
-        if (this.startDate && this.endDate && this.startDate > this.endDate) {
-            throw new Error('La fecha de inicio no puede ser posterior a la fecha de fin');
-        }
-    }
 };
 exports.Rental = Rental;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)(),
+    (0, typeorm_1.PrimaryGeneratedColumn)({ name: 'id' }),
     __metadata("design:type", Number)
 ], Rental.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: RentalType, default: RentalType.ITEM }),
+    (0, typeorm_1.Column)({ name: 'rental_type', type: 'enum', enum: RentalType }),
     __metadata("design:type", String)
 ], Rental.prototype, "type", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'object_id' }),
+    (0, typeorm_1.Column)({ name: 'inventory_id', nullable: true }),
     __metadata("design:type", Number)
-], Rental.prototype, "objectId", void 0);
+], Rental.prototype, "inventoryId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => Inventory_1.Inventory, { eager: true }),
-    (0, typeorm_1.JoinColumn)({ name: 'object_id' }),
+    (0, typeorm_1.Column)({ name: 'vehicle_id', nullable: true }),
+    __metadata("design:type", Number)
+], Rental.prototype, "vehicleId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'housing_id', nullable: true }),
+    __metadata("design:type", Number)
+], Rental.prototype, "housingId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Inventory_1.Inventory, { eager: true, nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'inventory_id' }),
     __metadata("design:type", Inventory_1.Inventory)
-], Rental.prototype, "object", void 0);
+], Rental.prototype, "inventory", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Vehicle_1.Vehicle, { eager: true, nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'vehicle_id' }),
+    __metadata("design:type", Vehicle_1.Vehicle)
+], Rental.prototype, "vehicle", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Housing_1.Housing, { eager: true, nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'housing_id' }),
+    __metadata("design:type", Housing_1.Housing)
+], Rental.prototype, "housing", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'start_date', type: 'date' }),
     __metadata("design:type", Date)
@@ -57,53 +71,17 @@ __decorate([
     __metadata("design:type", Number)
 ], Rental.prototype, "dailyCost", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2 }),
+    (0, typeorm_1.Column)({ name: 'total_cost', type: 'decimal', precision: 10, scale: 2 }),
     __metadata("design:type", Number)
 ], Rental.prototype, "total", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'people_count', type: 'int', nullable: true }),
-    __metadata("design:type", Object)
-], Rental.prototype, "peopleCount", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'dealer_name', nullable: true }),
-    __metadata("design:type", String)
-], Rental.prototype, "dealerName", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'dealer_address', type: 'text', nullable: true }),
-    __metadata("design:type", String)
-], Rental.prototype, "dealerAddress", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'dealer_phone', nullable: true }),
-    __metadata("design:type", String)
-], Rental.prototype, "dealerPhone", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'guest_count', type: 'int', nullable: true }),
-    __metadata("design:type", Number)
-], Rental.prototype, "guestCount", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'address', type: 'text', nullable: true }),
-    __metadata("design:type", String)
-], Rental.prototype, "address", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'bedrooms', type: 'int', nullable: true }),
-    __metadata("design:type", Number)
-], Rental.prototype, "bedrooms", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'bathrooms', type: 'int', nullable: true }),
-    __metadata("design:type", Number)
-], Rental.prototype, "bathrooms", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'amenities', type: 'simple-array', nullable: true }),
-    __metadata("design:type", Array)
-], Rental.prototype, "amenities", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'rules', type: 'text', nullable: true }),
-    __metadata("design:type", String)
-], Rental.prototype, "rules", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'comments', type: 'text', nullable: true }),
+    (0, typeorm_1.Column)({ name: 'rental_comments', type: 'text', nullable: true }),
     __metadata("design:type", String)
 ], Rental.prototype, "comments", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'rental_metadata', type: 'json', nullable: true }),
+    __metadata("design:type", Object)
+], Rental.prototype, "metadata", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
@@ -112,13 +90,6 @@ __decorate([
     (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
     __metadata("design:type", Date)
 ], Rental.prototype, "updatedAt", void 0);
-__decorate([
-    (0, typeorm_1.BeforeInsert)(),
-    (0, typeorm_1.BeforeUpdate)(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], Rental.prototype, "validateDates", null);
 exports.Rental = Rental = __decorate([
     (0, typeorm_1.Entity)('rental')
 ], Rental);

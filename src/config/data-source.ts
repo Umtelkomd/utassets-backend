@@ -12,6 +12,7 @@ import { Maintenance } from '../entity/Maintenance';
 import { Report } from '../entity/Report';
 import { Comment } from '../entity/Comment';
 import { Rental } from '../entity/Rental';
+import { Housing } from '../entity/Housing';
 import path from 'path';
 
 export const AppDataSource = new DataSource({
@@ -35,7 +36,8 @@ export const AppDataSource = new DataSource({
         Maintenance,
         Report,
         Comment,
-        Rental
+        Rental,
+        Housing
     ],
     migrations: [],
     subscribers: [],

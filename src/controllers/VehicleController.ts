@@ -14,6 +14,14 @@ export class VehicleController {
             const vehicle = req.body;
             const file = req.file;
 
+            // Convertir cadenas vacías a null para campos únicos
+            if (vehicle.licensePlate === '') {
+                vehicle.licensePlate = null;
+            }
+            if (vehicle.vin === '') {
+                vehicle.vin = null;
+            }
+
             // Si hay una imagen, agregar la ruta al vehículo
             if (file) {
                 vehicle.imagePath = file.filename;
@@ -36,7 +44,7 @@ export class VehicleController {
             }
 
             // Convertir campos opcionales vacíos a null
-            const optionalFields = ['vin', 'color', 'mileage', 'insuranceExpiryDate', 'technicalRevisionExpiryDate', 'notes'];
+            const optionalFields = ['color', 'mileage', 'insuranceExpiryDate', 'technicalRevisionExpiryDate', 'notes'];
             optionalFields.forEach((field) => {
                 if (vehicle[field] === '' || vehicle[field] === undefined) {
                     vehicle[field] = null;
@@ -245,6 +253,14 @@ export class VehicleController {
 
             const vehicle = req.body;
             const file = req.file;
+
+            // Convertir cadenas vacías a null para campos únicos
+            if (vehicle.licensePlate === '') {
+                vehicle.licensePlate = null;
+            }
+            if (vehicle.vin === '') {
+                vehicle.vin = null;
+            }
 
             // Obtener el vehículo existente
             const existingVehicle = await vehicleRepository.getVehicleById(id);
