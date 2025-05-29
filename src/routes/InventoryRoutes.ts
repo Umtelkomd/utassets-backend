@@ -1,61 +1,29 @@
 import { Router } from 'express';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import { inventoryController } from '../controllers/InventoryController';
+import { upload, handleMulterError } from '../middlewares/uploadMiddleware';
 import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 
-// Configurar multer para la subida de imágenes
-const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => {
-        const uploadDir = 'uploads/inventory';
-        // Crear el directorio si no existe
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (_req, file, cb) => {
-        // Generar un nombre único para el archivo
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'inventory-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Rutas públicas
+router.get('/', inventoryController.getAllItems.bind(inventoryController));
+router.get('/:id', inventoryController.getItem.bind(inventoryController));
 
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // Límite de 5MB
-    },
-    fileFilter: (_req, file, cb) => {
-        // Validar tipos de archivo
-        const filetypes = /jpeg|jpg|png|webp/;
-        const mimetype = filetypes.test(file.mimetype);
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+// Rutas protegidas
+router.use(authMiddleware);
 
-        if (mimetype && extname) {
-            return cb(null, true);
-        }
-        cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, webp)'));
-    }
-});
+// Rutas que requieren autenticación
+router.post('/', upload.single('image'), handleMulterError, inventoryController.createItem.bind(inventoryController));
+router.put('/:id', upload.single('image'), handleMulterError, inventoryController.updateItem.bind(inventoryController));
+router.delete('/:id', inventoryController.deleteItem.bind(inventoryController));
 
-// Rutas
-router.post('/', authMiddleware, upload.single('image'), inventoryController.createItem);
-router.get('/', authMiddleware, inventoryController.getAllItems);
-router.get('/:id', authMiddleware, inventoryController.getItem);
-router.put('/:id', authMiddleware, upload.single('image'), inventoryController.updateItem);
-router.delete('/:id', authMiddleware, inventoryController.deleteItem);
+// Rutas para manejo de imágenes
+router.put('/:id/image', upload.single('image'), handleMulterError, inventoryController.updateItemImage.bind(inventoryController));
+router.delete('/:id/image', inventoryController.deleteItemImage.bind(inventoryController));
 
-// Rutas específicas para imágenes
-router.post('/:id/image', authMiddleware, upload.single('image'), inventoryController.updateItemImage);
-router.delete('/:id/image', authMiddleware, inventoryController.deleteItemImage);
-
-// Rutas para usuarios responsables
-router.post('/:id/responsibles', authMiddleware, inventoryController.addResponsibleUser);
-router.delete('/:id/responsibles', authMiddleware, inventoryController.removeResponsibleUser);
-router.get('/:id/responsibles', authMiddleware, inventoryController.getResponsibleUsers);
+// Rutas para manejo de usuarios responsables
+router.post('/:id/responsibles', inventoryController.addResponsibleUser.bind(inventoryController));
+router.delete('/:id/responsibles', inventoryController.removeResponsibleUser.bind(inventoryController));
+router.get('/:id/responsibles', inventoryController.getResponsibleUsers.bind(inventoryController));
 
 export default router;

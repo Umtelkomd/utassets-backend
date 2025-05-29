@@ -6,26 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const VehicleController_1 = require("../controllers/VehicleController");
 const multer_1 = __importDefault(require("multer"));
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
 const authMiddleware_1 = require("../middlewares/authMiddleware");
 const router = (0, express_1.Router)();
-// Configurar multer para la subida de imágenes
-const storage = multer_1.default.diskStorage({
-    destination: (_req, _file, cb) => {
-        const uploadDir = 'uploads/vehicles';
-        // Crear el directorio si no existe
-        if (!fs_1.default.existsSync(uploadDir)) {
-            fs_1.default.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (_req, file, cb) => {
-        // Generar un nombre único para el archivo
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'vehicle-' + uniqueSuffix + path_1.default.extname(file.originalname));
-    }
-});
+// Configurar multer para almacenar en memoria
+const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({
     storage: storage,
     limits: {
@@ -35,7 +19,7 @@ const upload = (0, multer_1.default)({
         // Validar tipos de archivo
         const filetypes = /jpeg|jpg|png|webp/;
         const mimetype = filetypes.test(file.mimetype);
-        const extname = filetypes.test(path_1.default.extname(file.originalname).toLowerCase());
+        const extname = filetypes.test(file.originalname.toLowerCase());
         if (mimetype && extname) {
             return cb(null, true);
         }

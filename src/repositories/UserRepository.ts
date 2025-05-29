@@ -1,18 +1,38 @@
 import { AppDataSource } from '../config/data-source';
 import { User, UserRole } from '../entity/User';
 import bcrypt from 'bcrypt';
+import { DeepPartial } from 'typeorm';
+
+export interface UserCreateDTO {
+    username: string;
+    email: string;
+    password: string;
+    fullName: string;
+    firstName?: string;
+    lastName?: string;
+    role: UserRole;
+    isActive?: boolean;
+    phone?: string;
+    birthDate?: Date;
+    photoUrl?: string;
+    photoPublicId?: string;
+}
+
+type UserUpdateDTO = DeepPartial<User>;
 
 class UserRepository {
     private repository = AppDataSource.getRepository(User);
 
-    async createUser(userData: Partial<User>): Promise<User> {
+    async createUser(userData: UserCreateDTO): Promise<User> {
         // Hash de la contraseña antes de guardarla
-        if (userData.password) {
-            const salt = await bcrypt.genSalt(10);
-            userData.password = await bcrypt.hash(userData.password, salt);
-        }
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(userData.password, salt);
 
-        const user = this.repository.create(userData);
+        const user = this.repository.create({
+            ...userData,
+            password: hashedPassword,
+            isActive: userData.isActive ?? true
+        });
         return this.repository.save(user);
     }
 
@@ -38,7 +58,7 @@ class UserRepository {
         return this.repository.findOneBy({ email });
     }
 
-    async updateUser(id: number, userData: Partial<User>): Promise<User | null> {
+    async updateUser(id: number, userData: UserUpdateDTO): Promise<User | null> {
         // Hash de la contraseña si se está actualizando
         if (userData.password) {
             const salt = await bcrypt.genSalt(10);

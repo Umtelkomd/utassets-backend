@@ -44,7 +44,7 @@ exports.AppDataSource = new typeorm_1.DataSource({
         Rental_1.Rental,
         Housing_1.Housing
     ],
-    migrations: [],
+    migrations: [path_1.default.join(__dirname, '..', 'migration', '*.{ts,js}')],
     subscribers: [],
     charset: "utf8mb4",
 });

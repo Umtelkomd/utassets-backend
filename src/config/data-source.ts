@@ -39,7 +39,7 @@ export const AppDataSource = new DataSource({
         Rental,
         Housing
     ],
-    migrations: [],
+    migrations: [path.join(__dirname, '..', 'migration', '*.{ts,js}')],
     subscribers: [],
     charset: "utf8mb4",
 })

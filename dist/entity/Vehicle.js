@@ -51,10 +51,6 @@ __decorate([
     __metadata("design:type", Number)
 ], Vehicle.prototype, "year", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 17, unique: true, nullable: true }),
-    __metadata("design:type", Object)
-], Vehicle.prototype, "vin", void 0);
-__decorate([
     (0, typeorm_1.Column)({ type: 'varchar', length: 30, nullable: true }),
     __metadata("design:type", Object)
 ], Vehicle.prototype, "color", void 0);
@@ -92,9 +88,13 @@ __decorate([
     __metadata("design:type", Object)
 ], Vehicle.prototype, "notes", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'image_path', type: 'varchar', nullable: true }),
+    (0, typeorm_1.Column)({ name: 'photo_url', type: 'varchar', nullable: true }),
     __metadata("design:type", Object)
-], Vehicle.prototype, "imagePath", void 0);
+], Vehicle.prototype, "photoUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'photo_public_id', type: 'varchar', nullable: true }),
+    __metadata("design:type", Object)
+], Vehicle.prototype, "photoPublicId", void 0);
 __decorate([
     (0, typeorm_1.ManyToMany)(() => User_1.User, user => user.vehicles),
     (0, typeorm_1.JoinTable)({

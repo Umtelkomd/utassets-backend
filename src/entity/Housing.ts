@@ -20,6 +20,18 @@ export class Housing {
     @Column({ type: 'boolean', default: true })
     isAvailable!: boolean;
 
+    @Column({ type: 'simple-array', nullable: true })
+    amenities!: string[];
+
+    @Column({ type: 'text', nullable: true })
+    rules!: string;
+
+    @Column({ type: 'varchar', nullable: true })
+    photoUrl!: string | null;
+
+    @Column({ type: 'varchar', nullable: true })
+    photoPublicId!: string | null;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt!: Date;
 

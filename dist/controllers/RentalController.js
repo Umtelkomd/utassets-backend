@@ -43,6 +43,9 @@ class RentalController {
             Object.assign(rental, {
                 type: rentalType,
                 ...rentalWithDates,
+                // Aseguramos que el costo diario sea entero y el total tenga 2 decimales
+                dailyCost: Math.round(rentalWithDates.dailyCost),
+                total: Math.round(rentalWithDates.total * 100) / 100,
                 metadata: strategy.prepareMetadata({ ...rentalWithDates, ...metadata })
             });
             // Validar el alquiler
@@ -52,8 +55,8 @@ class RentalController {
                     message: validation.message
                 });
             }
-            // Calcular el total
-            rental.total = strategy.calculateTotal(rental);
+            // Ya no recalculamos el total aquí, usamos el que viene del frontend
+            // rental.total = rentalData.total || strategy.calculateTotal(rental);
             // Guardar el alquiler
             const result = await this.repository.save(rental);
             return res.status(201).json(result);
@@ -95,31 +98,46 @@ class RentalController {
     }
     // Actualizar un alquiler
     async update(req, res) {
+        var _a;
         try {
             const rental = await this.repository.findOne({ where: { id: Number(req.params.id) } });
             if (!rental) {
                 return res.status(404).json({ message: 'Alquiler no encontrado' });
             }
             const strategy = this.strategyFactory.getStrategy(rental.type);
+            const { metadata = {}, ...rentalData } = req.body;
+            // Si el metadata viene en la raíz del body, lo preparamos con la estrategia
+            const preparedMetadata = metadata.dealerName ? metadata : strategy.prepareMetadata(req.body);
             const updatedData = {
-                ...req.body,
-                metadata: strategy.prepareMetadata(req.body)
+                ...rentalData,
+                metadata: preparedMetadata
             };
+            console.log('Datos a actualizar:', {
+                rentalData,
+                metadata,
+                preparedMetadata,
+                updatedData
+            });
             // Validar el alquiler actualizado
             const validation = strategy.validate({ ...rental, ...updatedData });
             if (!validation.isValid) {
+                console.log('Error de validación:', validation);
                 return res.status(validation.status || 400).json({
-                    message: validation.message
+                    message: validation.message || ((_a = validation.errors) === null || _a === void 0 ? void 0 : _a.join(', '))
                 });
             }
             // Calcular el nuevo total
-            updatedData.total = strategy.calculateTotal({ ...rental, ...updatedData });
+            updatedData.total = rentalData.total || strategy.calculateTotal({ ...rental, ...updatedData });
             this.repository.merge(rental, updatedData);
             const result = await this.repository.save(rental);
             return res.json(result);
         }
         catch (error) {
-            return res.status(400).json({ message: 'Error al actualizar el alquiler', error });
+            console.error('Error al actualizar el alquiler:', error);
+            return res.status(400).json({
+                message: 'Error al actualizar el alquiler',
+                error: error instanceof Error ? error.message : error
+            });
         }
     }
     // Eliminar un alquiler

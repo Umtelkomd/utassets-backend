@@ -2,13 +2,23 @@ import { Request, Response } from 'express';
 import { userRepository } from '../repositories/UserRepository';
 import jwt from 'jsonwebtoken';
 import { User, UserRole } from '../entity/User';
-import * as path from 'path';
-import * as fs from 'fs';
+import { UploadService } from '../upload/upload.service';
+import { ConfigService } from '@nestjs/config';
+
+// Importar el tipo UserCreateDTO
+import { UserCreateDTO } from '../repositories/UserRepository';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'utassets_secret_key_2024_secure_token';
 const JWT_EXPIRES_IN = '24h';
 
 export class AuthController {
+    private uploadService: UploadService;
+
+    constructor() {
+        const configService = new ConfigService();
+        this.uploadService = new UploadService(configService);
+    }
+
     async login(req: Request, res: Response): Promise<void> {
         try {
             const { email, password } = req.body;
@@ -97,7 +107,7 @@ export class AuthController {
 
     async register(req: Request, res: Response): Promise<void> {
         try {
-            const userData = req.body as Partial<User>;
+            const userData = req.body;
             const file = req.file;
 
             // Logs detallados para depuración
@@ -121,10 +131,6 @@ export class AuthController {
                     password: userData.password ? 'presente' : 'ausente',
                     fullName: userData.fullName
                 });
-                // Si hay una imagen y hay error, eliminarla
-                if (file) {
-                    fs.unlinkSync(file.path);
-                }
                 res.status(400).json({
                     message: 'Datos incompletos. Se requiere email, contraseña y nombre completo'
                 });
@@ -143,10 +149,6 @@ export class AuthController {
                 const minDate = new Date('1900-01-01');
 
                 if (isNaN(birthDate.getTime())) {
-                    // Si hay una imagen y hay error, eliminarla
-                    if (file) {
-                        fs.unlinkSync(file.path);
-                    }
                     res.status(400).json({
                         message: 'La fecha de nacimiento no es válida'
                     });
@@ -154,10 +156,6 @@ export class AuthController {
                 }
 
                 if (birthDate < minDate || birthDate > currentDate) {
-                    // Si hay una imagen y hay error, eliminarla
-                    if (file) {
-                        fs.unlinkSync(file.path);
-                    }
                     res.status(400).json({
                         message: 'La fecha de nacimiento debe estar entre 1900 y la fecha actual'
                     });
@@ -168,39 +166,44 @@ export class AuthController {
             // Verificar si ya existe un usuario con el mismo username o email
             const existingUsername = await userRepository.getUserByUsername(userData.username);
             if (existingUsername) {
-                // Si hay una imagen y hay error, eliminarla
-                if (file) {
-                    fs.unlinkSync(file.path);
-                }
                 res.status(400).json({ message: 'El nombre de usuario ya está en uso' });
                 return;
             }
 
             const existingEmail = await userRepository.getUserByEmail(userData.email);
             if (existingEmail) {
-                // Si hay una imagen y hay error, eliminarla
-                if (file) {
-                    fs.unlinkSync(file.path);
-                }
                 res.status(400).json({ message: 'El email ya está registrado' });
                 return;
             }
 
-            // Si hay una imagen como archivo, agregar la ruta al usuario
+            // Procesar la imagen si existe
             if (file) {
-                userData.imagePath = file.filename;
-            }
-            // Si se proporciona una URL de imagen directamente
-            else if (userData.imagePath && typeof userData.imagePath === 'string' && userData.imagePath.startsWith('http')) {
-                // Mantener la URL como está
-                console.log('Usando URL de imagen proporcionada:', userData.imagePath);
+                try {
+                    const uploadResult = await this.uploadService.uploadImage(file, 'users');
+                    userData.photoUrl = uploadResult.url;
+                    userData.photoPublicId = uploadResult.public_id;
+                } catch (error) {
+                    console.error('Error al subir la imagen a Cloudinary:', error);
+                    res.status(500).json({ message: 'Error al subir la imagen' });
+                    return;
+                }
             }
 
-            // Por defecto, los usuarios nuevos se registran como técnicos
-            // Solo un administrador puede cambiar este valor posteriormente
-            userData.role = UserRole.TECH;
+            // Crear el objeto UserCreateDTO
+            const userCreateDTO: UserCreateDTO = {
+                username: userData.username,
+                email: userData.email,
+                password: userData.password,
+                fullName: userData.fullName,
+                role: UserRole.TECH,
+                isActive: true,
+                phone: userData.phone,
+                birthDate: userData.birthDate ? new Date(userData.birthDate) : undefined,
+                photoUrl: userData.photoUrl,
+                photoPublicId: userData.photoPublicId
+            };
 
-            const newUser = await userRepository.createUser(userData);
+            const newUser = await userRepository.createUser(userCreateDTO);
 
             // Excluir la contraseña de la respuesta
             const { password: _, ...userWithoutPassword } = newUser;
@@ -210,10 +213,6 @@ export class AuthController {
                 user: userWithoutPassword
             });
         } catch (error) {
-            // Si hay una imagen y hay error, eliminarla
-            if (req.file) {
-                fs.unlinkSync(req.file.path);
-            }
             console.error('Error en el registro de usuario:', error);
             res.status(500).json({
                 message: 'Error en el servidor durante el registro',

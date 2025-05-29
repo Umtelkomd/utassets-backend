@@ -5,6 +5,7 @@ const typeorm_1 = require("typeorm");
 const data_source_1 = require("../config/data-source");
 const Vehicle_1 = require("../entity/Vehicle");
 const User_1 = require("../entity/User");
+const entityUtils_1 = require("../utils/entityUtils");
 class VehicleRepository extends typeorm_1.Repository {
     constructor() {
         super(Vehicle_1.Vehicle, data_source_1.AppDataSource.createEntityManager());
@@ -15,15 +16,15 @@ class VehicleRepository extends typeorm_1.Repository {
             brand: vehicle.brand,
             model: vehicle.model,
             year: vehicle.year,
-            vin: vehicle.vin || null,
             color: vehicle.color || null,
             vehicleStatus: vehicle.vehicleStatus,
-            mileage: vehicle.mileage || null,
+            mileage: vehicle.mileage === undefined || vehicle.mileage === null ? 0 : vehicle.mileage,
             fuelType: vehicle.fuelType,
             insuranceExpiryDate: vehicle.insuranceExpiryDate || null,
             technicalRevisionExpiryDate: vehicle.technicalRevisionExpiryDate || null,
             notes: vehicle.notes || null,
-            imagePath: vehicle.imagePath || null,
+            photoUrl: vehicle.photoUrl || null,
+            photoPublicId: vehicle.photoPublicId || null,
             responsibleUsers: vehicle.responsibleUsers || []
         });
         return await this.save(newVehicle);
@@ -49,57 +50,42 @@ class VehicleRepository extends typeorm_1.Repository {
     }
     async getVehicleByLicensePlate(licensePlate) {
         return await this.findOne({
-            where: { licensePlate }
-        });
-    }
-    async getVehicleByVin(vin) {
-        return await this.findOne({
-            where: { vin }
+            where: { licensePlate },
+            relations: {
+                responsibleUsers: true
+            }
         });
     }
     async updateVehicle(id, vehicle) {
         const existingVehicle = await this.findOne({
             where: { id },
-            relations: {
-                responsibleUsers: true
-            }
+            relations: { responsibleUsers: true }
         });
         if (!existingVehicle) {
             return null;
         }
-        // Actualizar propiedades si existen en el DTO
-        if (vehicle.licensePlate !== undefined)
-            existingVehicle.licensePlate = vehicle.licensePlate;
-        if (vehicle.brand !== undefined)
-            existingVehicle.brand = vehicle.brand;
-        if (vehicle.model !== undefined)
-            existingVehicle.model = vehicle.model;
-        if (vehicle.year !== undefined)
-            existingVehicle.year = vehicle.year;
-        if (vehicle.vin !== undefined)
-            existingVehicle.vin = vehicle.vin;
-        if (vehicle.color !== undefined)
-            existingVehicle.color = vehicle.color;
-        if (vehicle.vehicleStatus !== undefined)
-            existingVehicle.vehicleStatus = vehicle.vehicleStatus;
-        if (vehicle.mileage !== undefined)
-            existingVehicle.mileage = vehicle.mileage;
-        if (vehicle.fuelType !== undefined)
-            existingVehicle.fuelType = vehicle.fuelType;
-        if (vehicle.insuranceExpiryDate !== undefined)
-            existingVehicle.insuranceExpiryDate = vehicle.insuranceExpiryDate;
-        if (vehicle.technicalRevisionExpiryDate !== undefined)
-            existingVehicle.technicalRevisionExpiryDate = vehicle.technicalRevisionExpiryDate;
-        if (vehicle.notes !== undefined)
-            existingVehicle.notes = vehicle.notes;
-        if (vehicle.imagePath !== undefined)
-            existingVehicle.imagePath = vehicle.imagePath;
-        // Manejar la actualización de usuarios responsables
-        if (vehicle.responsibleUsers !== undefined) {
-            // Cargar los usuarios completos desde la base de datos
-            const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
-            const users = await userRepository.findByIds(vehicle.responsibleUsers.map(u => u.id));
-            existingVehicle.responsibleUsers = users;
+        const { responsibleUsers, ...vehicleFields } = vehicle;
+        (0, entityUtils_1.applyPartialUpdate)(existingVehicle, vehicleFields, ['responsibleUsers']);
+        if (responsibleUsers !== undefined) {
+            try {
+                const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
+                let usersToAssign = [];
+                if (Array.isArray(responsibleUsers)) {
+                    const userIds = responsibleUsers.map(user => typeof user === 'object' ? user.id : user);
+                    usersToAssign = await userRepository.findByIds(userIds);
+                }
+                else if (typeof responsibleUsers === 'string') {
+                    const parsedUsers = JSON.parse(responsibleUsers);
+                    if (Array.isArray(parsedUsers)) {
+                        const userIds = parsedUsers.map(user => user.id);
+                        usersToAssign = await userRepository.findByIds(userIds);
+                    }
+                }
+                existingVehicle.responsibleUsers = usersToAssign;
+            }
+            catch (error) {
+                console.error('Error al procesar responsibleUsers:', error);
+            }
         }
         return await this.save(existingVehicle);
     }

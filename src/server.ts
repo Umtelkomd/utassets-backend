@@ -39,6 +39,7 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 app.use('/uploads/users', express.static(path.join(__dirname, '..', 'uploads', 'users')));
 app.use('/uploads/vehicles', express.static(path.join(__dirname, '..', 'uploads', 'vehicles')));
 app.use('/uploads/inventory', express.static(path.join(__dirname, '..', 'uploads', 'inventory')));
+app.use('/uploads/housing', express.static(path.join(__dirname, '..', 'uploads', 'housing')));
 
 // Rutas
 app.use('/api/auth', authRoutes);

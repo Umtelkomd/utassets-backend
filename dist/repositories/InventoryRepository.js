@@ -5,6 +5,7 @@ const typeorm_1 = require("typeorm");
 const data_source_1 = require("../config/data-source");
 const Inventory_1 = require("../entity/Inventory");
 const User_1 = require("../entity/User");
+const entityUtils_1 = require("../utils/entityUtils");
 class InventoryRepository extends typeorm_1.Repository {
     constructor() {
         super(Inventory_1.Inventory, data_source_1.AppDataSource.createEntityManager());
@@ -21,7 +22,8 @@ class InventoryRepository extends typeorm_1.Repository {
             lastMaintenanceDate: item.lastMaintenanceDate || null,
             nextMaintenanceDate: item.nextMaintenanceDate || null,
             notes: item.notes || null,
-            imagePath: item.imagePath || null,
+            photoUrl: item.photoUrl || null,
+            photoPublicId: item.photoPublicId || null,
             responsibleUsers: item.responsibleUsers || []
         });
         return await this.save(newItem);
@@ -47,26 +49,39 @@ class InventoryRepository extends typeorm_1.Repository {
     async updateItem(id, item) {
         const existingItem = await this.findOne({
             where: { id },
-            relations: {
-                responsibleUsers: true
-            }
+            relations: { responsibleUsers: true }
         });
         if (!existingItem) {
-            return null;
+            throw new Error('Item no encontrado');
         }
-        if (item.responsibleUsers !== undefined) {
-            // Cargar los usuarios completos desde la base de datos
-            const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
-            const users = await userRepository.findByIds(item.responsibleUsers.map(u => u.id));
-            existingItem.responsibleUsers = users;
+        const { responsibleUsers, ...itemFields } = item;
+        (0, entityUtils_1.applyPartialUpdate)(existingItem, itemFields, ['responsibleUsers']);
+        if (responsibleUsers !== undefined) {
+            try {
+                const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
+                let usersToAssign = [];
+                if (Array.isArray(responsibleUsers)) {
+                    const userIds = responsibleUsers.map(user => typeof user === 'object' ? user.id : user);
+                    usersToAssign = await userRepository.findByIds(userIds);
+                }
+                else if (typeof responsibleUsers === 'string') {
+                    const parsedUsers = JSON.parse(responsibleUsers);
+                    if (Array.isArray(parsedUsers)) {
+                        const userIds = parsedUsers.map(user => user.id);
+                        usersToAssign = await userRepository.findByIds(userIds);
+                    }
+                }
+                existingItem.responsibleUsers = usersToAssign;
+            }
+            catch (error) {
+                console.error('Error al procesar responsibleUsers:', error);
+            }
         }
-        Object.assign(existingItem, item);
         return await this.save(existingItem);
     }
     async deleteItem(id) {
         const itemToRemove = await this.findOne({
-            where: { id },
-            relations: ['responsibleUsers']
+            where: { id }
         });
         if (!itemToRemove) {
             return null;

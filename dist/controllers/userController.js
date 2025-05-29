@@ -32,31 +32,31 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UserController = void 0;
+exports.userController = exports.UserController = void 0;
 const User_1 = require("../entity/User");
 const bcrypt = __importStar(require("bcrypt"));
 const jwt = __importStar(require("jsonwebtoken"));
 const User_2 = require("../entity/User");
-const path = __importStar(require("path"));
-const fs = __importStar(require("fs"));
 const data_source_1 = require("../config/data-source");
+const upload_service_1 = require("../upload/upload.service");
+const config_1 = require("@nestjs/config");
+const fs_1 = __importDefault(require("fs"));
 class UserController {
     constructor() {
         this.userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
+        const configService = new config_1.ConfigService();
+        this.uploadService = new upload_service_1.UploadService(configService);
     }
     async createUser(req, res) {
         try {
-            // Extraer datos del FormData
             const { username, email, password, fullName, role, birthDate } = req.body;
             const file = req.file;
-            console.log('backend', req, res);
             // Validar campos requeridos
             if (!username || !email || !password || !fullName) {
-                // Si hay una imagen y hay error, eliminarla
-                if (file) {
-                    fs.unlinkSync(file.path);
-                }
                 return res.status(400).json({
                     message: 'Faltan campos requeridos: username, email, password o fullName'
                 });
@@ -69,14 +69,23 @@ class UserController {
                 ]
             });
             if (existingUser) {
-                // Si hay una imagen y hay error, eliminarla
-                if (file) {
-                    fs.unlinkSync(file.path);
-                }
                 return res.status(400).json({ message: 'El usuario o email ya existe' });
             }
             // Hash de la contraseña
             const hashedPassword = await bcrypt.hash(password, 10);
+            let photoUrl = null;
+            let photoPublicId = null;
+            if (file) {
+                try {
+                    const uploadResult = await this.uploadService.uploadImage(file, 'users');
+                    photoUrl = uploadResult.url;
+                    photoPublicId = uploadResult.public_id;
+                }
+                catch (error) {
+                    console.error('Error al subir la imagen a Cloudinary:', error);
+                    return res.status(500).json({ message: 'Error al subir la imagen' });
+                }
+            }
             // Crear el usuario
             const user = this.userRepository.create({
                 username,
@@ -86,7 +95,8 @@ class UserController {
                 role: role || User_2.UserRole.TECH,
                 birthDate: birthDate ? new Date(birthDate) : undefined,
                 isActive: true,
-                imagePath: file ? file.filename : null
+                photoUrl,
+                photoPublicId
             });
             // Guardar el usuario
             await this.userRepository.save(user);
@@ -97,24 +107,42 @@ class UserController {
                 throw new Error('JWT_SECRET no está definido');
             }
             const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-            res.status(201).json({ user: userWithoutPassword, token });
+            return res.status(201).json({ user: userWithoutPassword, token });
         }
         catch (error) {
-            // Si hay una imagen y hay error, eliminarla
-            if (req.file) {
-                fs.unlinkSync(req.file.path);
-            }
             console.error('Error al crear usuario:', error);
-            res.status(500).json({ message: 'Error al crear usuario' });
+            return res.status(500).json({ message: 'Error al crear usuario' });
         }
     }
     async updateUser(req, res) {
         try {
             const { id } = req.params;
             const { username, email, fullName, phone, role, isActive } = req.body;
+            const file = req.file;
             const user = await this.userRepository.findOne({ where: { id: parseInt(id) } });
             if (!user) {
+                if (file) {
+                    fs_1.default.unlinkSync(file.path);
+                }
                 return res.status(404).json({ message: 'Usuario no encontrado' });
+            }
+            // Procesar la imagen si existe
+            if (file) {
+                try {
+                    // Eliminar imagen anterior de Cloudinary si existe
+                    if (user.photoPublicId) {
+                        await this.uploadService.deleteImage(user.photoPublicId);
+                    }
+                    // Subir nueva imagen
+                    const uploadResult = await this.uploadService.uploadImage(file, 'users');
+                    user.photoUrl = uploadResult.url;
+                    user.photoPublicId = uploadResult.public_id;
+                }
+                catch (error) {
+                    console.error('Error al procesar la imagen:', error);
+                    fs_1.default.unlinkSync(file.path);
+                    return res.status(500).json({ message: 'Error al procesar la imagen del usuario' });
+                }
             }
             // Verificar si el nuevo username o email ya existen en otros usuarios
             if (username !== user.username || email !== user.email) {
@@ -125,6 +153,9 @@ class UserController {
                     ]
                 });
                 if (existingUser && existingUser.id !== parseInt(id)) {
+                    if (file) {
+                        fs_1.default.unlinkSync(file.path);
+                    }
                     return res.status(400).json({ message: 'El usuario o email ya existe' });
                 }
             }
@@ -136,13 +167,20 @@ class UserController {
             user.role = role || user.role;
             user.isActive = isActive !== undefined ? isActive : user.isActive;
             await this.userRepository.save(user);
+            // Eliminar archivo temporal si existe
+            if (file) {
+                fs_1.default.unlinkSync(file.path);
+            }
             // Eliminar la contraseña del objeto de respuesta
             const { password: _, ...userWithoutPassword } = user;
-            res.json(userWithoutPassword);
+            return res.json(userWithoutPassword);
         }
         catch (error) {
+            if (req.file) {
+                fs_1.default.unlinkSync(req.file.path);
+            }
             console.error('Error al actualizar usuario:', error);
-            res.status(500).json({ message: 'Error al actualizar usuario' });
+            return res.status(500).json({ message: 'Error al actualizar usuario' });
         }
     }
     async updateUserImage(req, res) {
@@ -154,23 +192,44 @@ class UserController {
             }
             const user = await this.userRepository.findOne({ where: { id: parseInt(id) } });
             if (!user) {
+                fs_1.default.unlinkSync(file.path);
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
-            // Si ya tiene una imagen, eliminarla
-            if (user.imagePath) {
-                const oldImagePath = path.join(__dirname, '..', '..', 'uploads', 'users', user.imagePath);
-                if (fs.existsSync(oldImagePath)) {
-                    fs.unlinkSync(oldImagePath);
+            try {
+                // Subir nueva imagen a Cloudinary
+                const uploadResult = await this.uploadService.uploadImage(file, 'users');
+                // Eliminar imagen anterior de Cloudinary si existe
+                if (user.photoPublicId) {
+                    await this.uploadService.deleteImage(user.photoPublicId);
                 }
+                // Actualizar con los nuevos datos
+                user.photoUrl = uploadResult.url;
+                user.photoPublicId = uploadResult.public_id;
+                await this.userRepository.save(user);
+                // Eliminar archivo temporal
+                fs_1.default.unlinkSync(file.path);
+                return res.status(200).json({
+                    message: 'Imagen actualizada correctamente',
+                    user: {
+                        ...user,
+                        photoUrl: user.photoUrl
+                    }
+                });
             }
-            // Actualizar la ruta de la imagen
-            user.imagePath = file.filename;
-            await this.userRepository.save(user);
-            res.json({ message: 'Imagen actualizada correctamente', imagePath: user.imagePath });
+            catch (uploadError) {
+                fs_1.default.unlinkSync(file.path);
+                return res.status(500).json({
+                    message: 'Error al subir la imagen',
+                    error: uploadError
+                });
+            }
         }
         catch (error) {
+            if (req.file) {
+                fs_1.default.unlinkSync(req.file.path);
+            }
             console.error('Error al actualizar imagen de usuario:', error);
-            res.status(500).json({ message: 'Error al actualizar imagen de usuario' });
+            return res.status(500).json({ message: 'Error al actualizar imagen de usuario' });
         }
     }
     async deleteUserImage(req, res) {
@@ -180,34 +239,43 @@ class UserController {
             if (!user) {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
-            if (!user.imagePath) {
+            if (!user.photoUrl || !user.photoPublicId) {
                 return res.status(400).json({ message: 'El usuario no tiene imagen' });
             }
-            // Eliminar la imagen
-            const imagePath = path.join(__dirname, '..', '..', 'uploads', 'users', user.imagePath);
-            if (fs.existsSync(imagePath)) {
-                fs.unlinkSync(imagePath);
+            try {
+                // Eliminar de Cloudinary
+                await this.uploadService.deleteImage(user.photoPublicId);
+                // Actualizar el usuario para eliminar las referencias
+                user.photoUrl = null;
+                user.photoPublicId = null;
+                await this.userRepository.save(user);
+                return res.status(200).json({
+                    message: 'Imagen eliminada correctamente',
+                    user
+                });
             }
-            // Actualizar el usuario
-            user.imagePath = null;
-            await this.userRepository.save(user);
-            res.json({ message: 'Imagen eliminada correctamente' });
+            catch (deleteError) {
+                return res.status(500).json({
+                    message: 'Error al eliminar la imagen de Cloudinary',
+                    error: deleteError
+                });
+            }
         }
         catch (error) {
             console.error('Error al eliminar imagen de usuario:', error);
-            res.status(500).json({ message: 'Error al eliminar imagen de usuario' });
+            return res.status(500).json({ message: 'Error al eliminar imagen de usuario' });
         }
     }
     async getUsers(req, res) {
         try {
             const users = await this.userRepository.find({
-                select: ['id', 'username', 'email', 'fullName', 'phone', 'role', 'isActive', 'lastLoginDate', 'lastLoginIp', 'createdAt', 'updatedAt', 'imagePath']
+                select: ['id', 'username', 'email', 'fullName', 'phone', 'role', 'isActive', 'lastLoginDate', 'lastLoginIp', 'createdAt', 'updatedAt', 'photoUrl', 'photoPublicId']
             });
-            res.json(users);
+            return res.json(users);
         }
         catch (error) {
             console.error('Error al obtener usuarios:', error);
-            res.status(500).json({ message: 'Error al obtener usuarios' });
+            return res.status(500).json({ message: 'Error al obtener usuarios' });
         }
     }
     async getUserById(req, res) {
@@ -215,17 +283,18 @@ class UserController {
             const { id } = req.params;
             const user = await this.userRepository.findOne({
                 where: { id: parseInt(id) },
-                select: ['id', 'username', 'email', 'fullName', 'phone', 'role', 'isActive', 'lastLoginDate', 'lastLoginIp', 'createdAt', 'updatedAt', 'imagePath']
+                select: ['id', 'username', 'email', 'fullName', 'phone', 'role', 'isActive', 'lastLoginDate', 'lastLoginIp', 'createdAt', 'updatedAt', 'photoUrl', 'photoPublicId']
             });
             if (!user) {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
-            res.json(user);
+            return res.json(user);
         }
         catch (error) {
             console.error('Error al obtener usuario:', error);
-            res.status(500).json({ message: 'Error al obtener usuario' });
+            return res.status(500).json({ message: 'Error al obtener usuario' });
         }
     }
 }
 exports.UserController = UserController;
+exports.userController = new UserController();

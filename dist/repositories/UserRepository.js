@@ -12,12 +12,15 @@ class UserRepository {
         this.repository = data_source_1.AppDataSource.getRepository(User_1.User);
     }
     async createUser(userData) {
+        var _a;
         // Hash de la contraseña antes de guardarla
-        if (userData.password) {
-            const salt = await bcrypt_1.default.genSalt(10);
-            userData.password = await bcrypt_1.default.hash(userData.password, salt);
-        }
-        const user = this.repository.create(userData);
+        const salt = await bcrypt_1.default.genSalt(10);
+        const hashedPassword = await bcrypt_1.default.hash(userData.password, salt);
+        const user = this.repository.create({
+            ...userData,
+            password: hashedPassword,
+            isActive: (_a = userData.isActive) !== null && _a !== void 0 ? _a : true
+        });
         return this.repository.save(user);
     }
     async getAllUsers() {

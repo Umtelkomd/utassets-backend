@@ -1,69 +1,24 @@
-import express, { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { UserController } from '../controllers/userController';
-import { authMiddleware, isAdmin } from '../middlewares/authMiddleware';
-import { upload } from '../middlewares/uploadMiddleware';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { upload, handleMulterError } from '../middlewares/uploadMiddleware';
+import { authMiddleware } from '../middlewares/authMiddleware';
 
-const router = express.Router();
-const userController = new UserController();
-
-// Configuración de multer para subir imágenes
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = 'uploads/users';
-        // Crear el directorio si no existe
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'user-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
-const uploadMulter = multer({
-    storage: storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // Límite de 5MB
-    },
-    fileFilter: (req, file, cb) => {
-        // Validar tipos de archivo
-        const filetypes = /jpeg|jpg|png|webp/;
-        const mimetype = filetypes.test(file.mimetype);
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-
-        if (mimetype && extname) {
-            return cb(null, true);
-        }
-        cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, webp)'));
-    }
-});
-
-// Middleware para manejar errores de multer
-const handleMulterError = (err: Error, req: Request, res: Response, next: NextFunction) => {
-    if (err instanceof multer.MulterError) {
-        if (err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ message: 'El archivo es demasiado grande. Máximo 5MB' });
-        }
-        return res.status(400).json({ message: err.message });
-    } else if (err) {
-        return res.status(400).json({ message: err.message });
-    }
-    next();
-};
+const router = Router();
+const controller = new UserController();
 
 // Rutas públicas
-router.post('/register', uploadMulter.single('image'), handleMulterError, userController.createUser.bind(userController));
+router.post('/register', upload.single('image'), handleMulterError, controller.createUser.bind(controller));
 
 // Rutas protegidas
-router.get('/', authMiddleware, userController.getUsers.bind(userController));
-router.get('/:id', authMiddleware, userController.getUserById.bind(userController));
-router.put('/:id', authMiddleware, userController.updateUser.bind(userController));
-router.put('/:id/image', authMiddleware, uploadMulter.single('image'), handleMulterError, userController.updateUserImage.bind(userController));
-router.delete('/:id/image', authMiddleware, userController.deleteUserImage.bind(userController));
+router.use(authMiddleware);
+
+// Rutas que requieren autenticación
+router.get('/', controller.getUsers.bind(controller));
+router.get('/:id', controller.getUserById.bind(controller));
+router.put('/:id', controller.updateUser.bind(controller));
+
+// Rutas específicas para imágenes
+router.put('/:id/image', upload.single('image'), handleMulterError, controller.updateUserImage.bind(controller));
+router.delete('/:id/image', controller.deleteUserImage.bind(controller));
 
 export default router; 

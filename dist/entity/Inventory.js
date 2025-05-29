@@ -60,9 +60,13 @@ __decorate([
     __metadata("design:type", Object)
 ], Inventory.prototype, "notes", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'image_path', type: 'varchar', nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", Object)
-], Inventory.prototype, "imagePath", void 0);
+], Inventory.prototype, "photoUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
+    __metadata("design:type", Object)
+], Inventory.prototype, "photoPublicId", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)

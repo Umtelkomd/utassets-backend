@@ -1,45 +1,50 @@
+import { RequestHandler, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 
-// Asegurarse de que el directorio de uploads existe
-const ensureUploadDir = (dir: string) => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-};
+// Configurar multer para almacenar en memoria
+const storage = multer.memoryStorage();
 
-// Configurar el almacenamiento
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'users');
-        ensureUploadDir(uploadDir);
-        cb(null, uploadDir);
+// Configurar límites y filtros
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB
     },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'user-' + uniqueSuffix + path.extname(file.originalname));
+    fileFilter: (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+        // Validar tipos de archivo
+        const filetypes = /jpeg|jpg|png|webp/;
+        const mimetype = filetypes.test(file.mimetype);
+        const extname = filetypes.test(file.originalname.toLowerCase());
+
+        if (mimetype && extname) {
+            return cb(null, true);
+        }
+        cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, webp)'));
     }
 });
 
-// Filtrar archivos
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    const filetypes = /jpeg|jpg|png|webp/;
-    const mimetype = filetypes.test(file.mimetype);
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-
-    if (mimetype && extname) {
-        cb(null, true);
-    } else {
-        cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, webp)'));
+// Middleware para manejar errores de multer
+export const handleMulterError = (
+    err: Error,
+    _req: Request,
+    res: Response,
+    next: NextFunction
+): void | Response => {
+    if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ message: 'El archivo es demasiado grande. Máximo 5MB' });
+        }
+        return res.status(400).json({ message: err.message });
+    } else if (err) {
+        return res.status(400).json({ message: err.message });
     }
+    next();
 };
 
-// Configurar multer
-export const upload = multer({
-    storage: storage,
-    fileFilter: fileFilter,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB
-    }
-}); 
+// Middleware para subir una sola imagen
+export const uploadSingle = (fieldName: string) => upload.single(fieldName);
+
+// Middleware para subir múltiples imágenes
+export const uploadMultiple = (fieldName: string, maxCount: number = 5) => upload.array(fieldName, maxCount);
+
+export { upload }; 

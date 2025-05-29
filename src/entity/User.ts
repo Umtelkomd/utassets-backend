@@ -52,8 +52,11 @@ export class User {
     @Column({ nullable: true })
     lastLoginDate?: Date;
 
-    @Column({ name: 'image_path', type: 'varchar', nullable: true })
-    imagePath: string | null;
+    @Column({ name: 'photo_url', type: 'varchar', nullable: true })
+    photoUrl: string | null;
+
+    @Column({ name: 'photo_public_id', type: 'varchar', nullable: true })
+    photoPublicId: string | null;
 
     @CreateDateColumn()
     createdAt: Date;

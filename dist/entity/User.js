@@ -72,9 +72,13 @@ __decorate([
     __metadata("design:type", Date)
 ], User.prototype, "lastLoginDate", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'image_path', type: 'varchar', nullable: true }),
+    (0, typeorm_1.Column)({ name: 'photo_url', type: 'varchar', nullable: true }),
     __metadata("design:type", Object)
-], User.prototype, "imagePath", void 0);
+], User.prototype, "photoUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'photo_public_id', type: 'varchar', nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "photoPublicId", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

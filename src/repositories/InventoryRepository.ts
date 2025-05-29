@@ -2,6 +2,8 @@ import { Repository } from 'typeorm';
 import { AppDataSource } from '../config/data-source';
 import { Inventory } from '../entity/Inventory';
 import { User } from '../entity/User';
+import { EntityRepository } from 'typeorm';
+import { applyPartialUpdate } from '../utils/entityUtils';
 
 interface InventoryCreateDTO {
     itemName: string;
@@ -14,7 +16,8 @@ interface InventoryCreateDTO {
     lastMaintenanceDate?: Date | null;
     nextMaintenanceDate?: Date | null;
     notes?: string | null;
-    imagePath?: string | null;
+    photoUrl?: string | null;
+    photoPublicId?: string | null;
     responsibleUsers?: User[];
 }
 
@@ -35,7 +38,8 @@ export class InventoryRepository extends Repository<Inventory> {
             lastMaintenanceDate: item.lastMaintenanceDate || null,
             nextMaintenanceDate: item.nextMaintenanceDate || null,
             notes: item.notes || null,
-            imagePath: item.imagePath || null,
+            photoUrl: item.photoUrl || null,
+            photoPublicId: item.photoPublicId || null,
             responsibleUsers: item.responsibleUsers || []
         });
 
@@ -65,30 +69,47 @@ export class InventoryRepository extends Repository<Inventory> {
     async updateItem(id: number, item: Partial<InventoryCreateDTO>): Promise<Inventory | null> {
         const existingItem = await this.findOne({
             where: { id },
-            relations: {
-                responsibleUsers: true
-            }
+            relations: { responsibleUsers: true }
         });
 
         if (!existingItem) {
-            return null;
+            throw new Error('Item no encontrado');
         }
 
-        if (item.responsibleUsers !== undefined) {
-            // Cargar los usuarios completos desde la base de datos
-            const userRepository = AppDataSource.getRepository(User);
-            const users = await userRepository.findByIds(item.responsibleUsers.map(u => u.id));
-            existingItem.responsibleUsers = users;
+        const { responsibleUsers, ...itemFields } = item;
+
+        applyPartialUpdate(existingItem, itemFields, ['responsibleUsers']);
+
+        if (responsibleUsers !== undefined) {
+            try {
+                const userRepository = AppDataSource.getRepository(User);
+                let usersToAssign: User[] = [];
+
+                if (Array.isArray(responsibleUsers)) {
+                    const userIds = responsibleUsers.map(user =>
+                        typeof user === 'object' ? user.id : user
+                    );
+                    usersToAssign = await userRepository.findByIds(userIds);
+                } else if (typeof responsibleUsers === 'string') {
+                    const parsedUsers = JSON.parse(responsibleUsers);
+                    if (Array.isArray(parsedUsers)) {
+                        const userIds = parsedUsers.map(user => user.id);
+                        usersToAssign = await userRepository.findByIds(userIds);
+                    }
+                }
+
+                existingItem.responsibleUsers = usersToAssign;
+            } catch (error) {
+                console.error('Error al procesar responsibleUsers:', error);
+            }
         }
 
-        Object.assign(existingItem, item);
         return await this.save(existingItem);
     }
 
     async deleteItem(id: number): Promise<Inventory | null> {
         const itemToRemove = await this.findOne({
-            where: { id },
-            relations: ['responsibleUsers']
+            where: { id }
         });
 
         if (!itemToRemove) {

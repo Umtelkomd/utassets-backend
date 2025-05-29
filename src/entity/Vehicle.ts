@@ -63,8 +63,11 @@ export class Vehicle {
     @Column({ type: 'text', nullable: true })
     notes: string | null;
 
-    @Column({ name: 'image_path', type: 'varchar', nullable: true })
-    imagePath: string | null;
+    @Column({ name: 'photo_url', type: 'varchar', nullable: true })
+    photoUrl: string | null;
+
+    @Column({ name: 'photo_public_id', type: 'varchar', nullable: true })
+    photoPublicId: string | null;
 
     @ManyToMany(() => User, user => user.vehicles)
     @JoinTable({

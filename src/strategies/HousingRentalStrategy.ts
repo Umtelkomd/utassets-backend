@@ -4,14 +4,8 @@ import { RentalStrategy, ValidationResult } from './RentalStrategy';
 export class HousingRentalStrategy implements RentalStrategy {
     calculateTotal(rental: Rental): number {
         const days = this.calculateDays(rental.startDate, rental.endDate);
-        const baseCost = rental.dailyCost * days;
-
-        // Lógica específica para viviendas (cargo por huésped adicional)
         const guestCount = rental.metadata?.guestCount || 1;
-        const baseGuestCount = rental.metadata?.baseGuestCount || 2;
-        const additionalGuestCharge = Math.max(0, guestCount - baseGuestCount) * 20; // $20 por huésped adicional
-
-        return baseCost + (additionalGuestCharge * days);
+        return rental.dailyCost * days * guestCount;
     }
 
     validate(rental: Rental): ValidationResult {
@@ -30,10 +24,7 @@ export class HousingRentalStrategy implements RentalStrategy {
             'startDate',
             'endDate',
             'dailyCost',
-            'guestCount',
-            'address',
-            'bedrooms',
-            'bathrooms'
+            'guestCount'
         ];
     }
 
@@ -44,54 +35,13 @@ export class HousingRentalStrategy implements RentalStrategy {
                 required: true,
                 min: 1,
                 description: 'Número de huéspedes'
-            },
-            address: {
-                type: 'string',
-                required: true,
-                description: 'Dirección de la vivienda'
-            },
-            bedrooms: {
-                type: 'number',
-                required: true,
-                min: 0,
-                description: 'Número de habitaciones'
-            },
-            bathrooms: {
-                type: 'number',
-                required: true,
-                min: 0,
-                description: 'Número de baños'
-            },
-            baseGuestCount: {
-                type: 'number',
-                required: false,
-                default: 2,
-                description: 'Número base de huéspedes incluidos en el precio'
-            },
-            amenities: {
-                type: 'array',
-                required: false,
-                items: { type: 'string' },
-                description: 'Lista de amenidades disponibles'
-            },
-            rules: {
-                type: 'string',
-                required: false,
-                description: 'Reglas de la vivienda'
             }
         };
     }
 
     prepareMetadata(data: any): Record<string, any> {
         return {
-            guestCount: data.guestCount ? parseInt(data.guestCount, 10) : 1,
-            address: data.address,
-            bedrooms: data.bedrooms ? parseInt(data.bedrooms, 10) : 0,
-            bathrooms: data.bathrooms ? parseInt(data.bathrooms, 10) : 0,
-            baseGuestCount: data.baseGuestCount ? parseInt(data.baseGuestCount, 10) : 2,
-            amenities: Array.isArray(data.amenities) ? data.amenities :
-                data.amenities ? data.amenities.split(',').map((a: string) => a.trim()) : [],
-            rules: data.rules
+            guestCount: data.guestCount ? parseInt(data.guestCount, 10) : 1
         };
     }
 
@@ -126,34 +76,17 @@ export class HousingRentalStrategy implements RentalStrategy {
             };
         }
 
-        if (!metadata.address) {
-            return {
-                isValid: false,
-                message: 'La dirección es requerida',
-                status: 400
-            };
-        }
-
-        if (!metadata.bedrooms || metadata.bedrooms < 0) {
-            return {
-                isValid: false,
-                message: 'El número de habitaciones no puede ser negativo',
-                status: 400
-            };
-        }
-
-        if (!metadata.bathrooms || metadata.bathrooms < 0) {
-            return {
-                isValid: false,
-                message: 'El número de baños no puede ser negativo',
-                status: 400
-            };
-        }
-
         return { isValid: true };
     }
 
-    private calculateDays(start: Date, end: Date): number {
-        return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    private calculateDays(start: Date | string, end: Date | string): number {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            throw new Error('Fechas inválidas');
+        }
+
+        return Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     }
 } 

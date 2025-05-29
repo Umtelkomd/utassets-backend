@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -40,10 +7,15 @@ exports.authController = exports.AuthController = void 0;
 const UserRepository_1 = require("../repositories/UserRepository");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = require("../entity/User");
-const fs = __importStar(require("fs"));
+const upload_service_1 = require("../upload/upload.service");
+const config_1 = require("@nestjs/config");
 const JWT_SECRET = process.env.JWT_SECRET || 'utassets_secret_key_2024_secure_token';
 const JWT_EXPIRES_IN = '24h';
 class AuthController {
+    constructor() {
+        const configService = new config_1.ConfigService();
+        this.uploadService = new upload_service_1.UploadService(configService);
+    }
     async login(req, res) {
         try {
             const { email, password } = req.body;
@@ -137,10 +109,6 @@ class AuthController {
                     password: userData.password ? 'presente' : 'ausente',
                     fullName: userData.fullName
                 });
-                // Si hay una imagen y hay error, eliminarla
-                if (file) {
-                    fs.unlinkSync(file.path);
-                }
                 res.status(400).json({
                     message: 'Datos incompletos. Se requiere email, contraseña y nombre completo'
                 });
@@ -156,20 +124,12 @@ class AuthController {
                 const currentDate = new Date();
                 const minDate = new Date('1900-01-01');
                 if (isNaN(birthDate.getTime())) {
-                    // Si hay una imagen y hay error, eliminarla
-                    if (file) {
-                        fs.unlinkSync(file.path);
-                    }
                     res.status(400).json({
                         message: 'La fecha de nacimiento no es válida'
                     });
                     return;
                 }
                 if (birthDate < minDate || birthDate > currentDate) {
-                    // Si hay una imagen y hay error, eliminarla
-                    if (file) {
-                        fs.unlinkSync(file.path);
-                    }
                     res.status(400).json({
                         message: 'La fecha de nacimiento debe estar entre 1900 y la fecha actual'
                     });
@@ -179,35 +139,41 @@ class AuthController {
             // Verificar si ya existe un usuario con el mismo username o email
             const existingUsername = await UserRepository_1.userRepository.getUserByUsername(userData.username);
             if (existingUsername) {
-                // Si hay una imagen y hay error, eliminarla
-                if (file) {
-                    fs.unlinkSync(file.path);
-                }
                 res.status(400).json({ message: 'El nombre de usuario ya está en uso' });
                 return;
             }
             const existingEmail = await UserRepository_1.userRepository.getUserByEmail(userData.email);
             if (existingEmail) {
-                // Si hay una imagen y hay error, eliminarla
-                if (file) {
-                    fs.unlinkSync(file.path);
-                }
                 res.status(400).json({ message: 'El email ya está registrado' });
                 return;
             }
-            // Si hay una imagen como archivo, agregar la ruta al usuario
+            // Procesar la imagen si existe
             if (file) {
-                userData.imagePath = file.filename;
+                try {
+                    const uploadResult = await this.uploadService.uploadImage(file, 'users');
+                    userData.photoUrl = uploadResult.url;
+                    userData.photoPublicId = uploadResult.public_id;
+                }
+                catch (error) {
+                    console.error('Error al subir la imagen a Cloudinary:', error);
+                    res.status(500).json({ message: 'Error al subir la imagen' });
+                    return;
+                }
             }
-            // Si se proporciona una URL de imagen directamente
-            else if (userData.imagePath && typeof userData.imagePath === 'string' && userData.imagePath.startsWith('http')) {
-                // Mantener la URL como está
-                console.log('Usando URL de imagen proporcionada:', userData.imagePath);
-            }
-            // Por defecto, los usuarios nuevos se registran como técnicos
-            // Solo un administrador puede cambiar este valor posteriormente
-            userData.role = User_1.UserRole.TECH;
-            const newUser = await UserRepository_1.userRepository.createUser(userData);
+            // Crear el objeto UserCreateDTO
+            const userCreateDTO = {
+                username: userData.username,
+                email: userData.email,
+                password: userData.password,
+                fullName: userData.fullName,
+                role: User_1.UserRole.TECH,
+                isActive: true,
+                phone: userData.phone,
+                birthDate: userData.birthDate ? new Date(userData.birthDate) : undefined,
+                photoUrl: userData.photoUrl,
+                photoPublicId: userData.photoPublicId
+            };
+            const newUser = await UserRepository_1.userRepository.createUser(userCreateDTO);
             // Excluir la contraseña de la respuesta
             const { password: _, ...userWithoutPassword } = newUser;
             res.status(201).json({
@@ -216,10 +182,6 @@ class AuthController {
             });
         }
         catch (error) {
-            // Si hay una imagen y hay error, eliminarla
-            if (req.file) {
-                fs.unlinkSync(req.file.path);
-            }
             console.error('Error en el registro de usuario:', error);
             res.status(500).json({
                 message: 'Error en el servidor durante el registro',

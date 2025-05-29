@@ -1,33 +1,55 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.inventoryController = exports.InventoryController = void 0;
+exports.inventoryController = void 0;
 const InventoryRepository_1 = require("../repositories/InventoryRepository");
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const data_source_1 = require("../config/data-source");
+const upload_service_1 = require("../upload/upload.service");
+const config_1 = require("@nestjs/config");
 const User_1 = require("../entity/User");
+const data_source_1 = require("../config/data-source");
 const typeorm_1 = require("typeorm");
-const UserRepository_1 = require("../repositories/UserRepository");
 class InventoryController {
+    constructor() {
+        const configService = new config_1.ConfigService({
+            load: [() => ({
+                    CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+                    CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+                    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
+                })]
+        });
+        this.uploadService = new upload_service_1.UploadService(configService);
+        // Vincular los métodos al contexto de la clase
+        this.createItem = this.createItem.bind(this);
+        this.updateItem = this.updateItem.bind(this);
+        this.getAllItems = this.getAllItems.bind(this);
+        this.getItem = this.getItem.bind(this);
+        this.deleteItem = this.deleteItem.bind(this);
+        this.updateItemImage = this.updateItemImage.bind(this);
+        this.deleteItemImage = this.deleteItemImage.bind(this);
+        this.addResponsibleUser = this.addResponsibleUser.bind(this);
+        this.removeResponsibleUser = this.removeResponsibleUser.bind(this);
+        this.getResponsibleUsers = this.getResponsibleUsers.bind(this);
+    }
     async createItem(req, res) {
         try {
             const item = req.body;
             const file = req.file;
-            // Si hay una imagen, agregar la ruta al vehículo
+            // Procesar la imagen si existe
             if (file) {
-                item.imagePath = file.filename;
+                try {
+                    const uploadResult = await this.uploadService.uploadImage(file, 'inventory');
+                    item.photoUrl = uploadResult.url;
+                    item.photoPublicId = uploadResult.public_id;
+                }
+                catch (error) {
+                    console.error('Error al subir la imagen a Cloudinary:', error);
+                    res.status(500).json({ message: 'Error al subir la imagen del item' });
+                    return;
+                }
             }
             // Validar que los campos requeridos estén presentes
             const requiredFields = ['itemName', 'category', 'quantity', 'condition'];
             const missingFields = requiredFields.filter(field => !item[field]);
             if (missingFields.length > 0) {
-                // Si hay error y se subió una imagen, eliminarla
-                if (file) {
-                    fs_1.default.unlinkSync(file.path);
-                }
                 res.status(400).json({
                     message: 'Faltan campos requeridos',
                     fields: missingFields
@@ -46,57 +68,58 @@ class InventoryController {
                     item[field] = null;
                 }
             });
+            // Convertir strings a números si es necesario
+            if (typeof item.quantity === 'string' && item.quantity) {
+                item.quantity = parseInt(item.quantity, 10);
+            }
+            // Convertir fechas a objetos Date si vienen como string
+            if (typeof item.acquisitionDate === 'string' && item.acquisitionDate) {
+                item.acquisitionDate = new Date(item.acquisitionDate);
+            }
+            if (typeof item.lastMaintenanceDate === 'string' && item.lastMaintenanceDate) {
+                item.lastMaintenanceDate = new Date(item.lastMaintenanceDate);
+            }
+            if (typeof item.nextMaintenanceDate === 'string' && item.nextMaintenanceDate) {
+                item.nextMaintenanceDate = new Date(item.nextMaintenanceDate);
+            }
             // Manejar usuarios responsables
             if (item.responsibleUsers) {
-                // Si es un string, intentar parsearlo como JSON
-                if (typeof item.responsibleUsers === 'string') {
-                    try {
+                try {
+                    // Si es un string, intentar parsearlo como JSON
+                    if (typeof item.responsibleUsers === 'string') {
                         item.responsibleUsers = JSON.parse(item.responsibleUsers);
                     }
-                    catch (error) {
-                        if (file) {
-                            fs_1.default.unlinkSync(file.path);
+                    if (Array.isArray(item.responsibleUsers)) {
+                        // Extraer los IDs de los usuarios
+                        const userIds = item.responsibleUsers.map((user) => user.id);
+                        // Verificar que todos los usuarios existan
+                        const users = await data_source_1.AppDataSource.getRepository(User_1.User).findBy({ id: (0, typeorm_1.In)(userIds) });
+                        if (users.length !== userIds.length) {
+                            res.status(400).json({
+                                message: 'Uno o más usuarios responsables no existen'
+                            });
+                            return;
                         }
-                        res.status(400).json({
-                            message: 'Formato inválido para usuarios responsables'
-                        });
-                        return;
+                        item.responsibleUsers = users;
                     }
                 }
-                if (Array.isArray(item.responsibleUsers)) {
-                    // Verificar que todos los usuarios existan
-                    const userIds = item.responsibleUsers.map((user) => user.id);
-                    const users = await data_source_1.AppDataSource.getRepository(User_1.User).findBy({ id: (0, typeorm_1.In)(userIds) });
-                    if (users.length !== userIds.length) {
-                        if (file) {
-                            fs_1.default.unlinkSync(file.path);
-                        }
-                        res.status(400).json({
-                            message: 'Uno o más usuarios responsables no existen'
-                        });
-                        return;
-                    }
-                    item.responsibleUsers = users;
+                catch (error) {
+                    console.error('Error al procesar usuarios responsables:', error);
+                    res.status(400).json({
+                        message: 'Error al procesar los usuarios responsables'
+                    });
+                    return;
                 }
             }
             else if (item.responsibleUsers === null) {
-                // Si se envía null, significa que se quieren eliminar todos los responsables
                 item.responsibleUsers = [];
             }
             const newItem = await InventoryRepository_1.inventoryRepository.createItem(item);
             res.status(201).json(newItem);
         }
         catch (error) {
-            // Si hay error y se subió una imagen, eliminarla
-            if (req.file) {
-                fs_1.default.unlinkSync(req.file.path);
-            }
-            console.error('Error al crear el item:', error);
-            res.status(500).json({
-                message: 'Error al crear el item',
-                error: error instanceof Error ? error.message : 'Error desconocido',
-                details: error
-            });
+            console.error('Error al crear item:', error);
+            res.status(500).json({ message: 'Error al crear el item' });
         }
     }
     async getAllItems(req, res) {
@@ -157,319 +180,100 @@ class InventoryController {
     }
     async updateItem(req, res) {
         try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id)) {
-                if (req.file) {
-                    fs_1.default.unlinkSync(req.file.path);
-                }
-                res.status(400).json({ message: 'ID inválido' });
-                return;
-            }
+            const itemId = parseInt(req.params.id, 10);
             const item = req.body;
             const file = req.file;
-            // Obtener el item existente antes de actualizarlo
-            const existingItem = await InventoryRepository_1.inventoryRepository.getItemById(id);
+            if (isNaN(itemId)) {
+                res.status(400).json({ message: 'ID de item inválido' });
+                return;
+            }
+            const existingItem = await InventoryRepository_1.inventoryRepository.getItemById(itemId);
             if (!existingItem) {
-                if (file) {
-                    fs_1.default.unlinkSync(file.path);
-                }
                 res.status(404).json({ message: 'Item no encontrado' });
                 return;
             }
-            // Si hay archivo cargado, guardar solo el nombre del archivo y eliminar la anterior
+            // Procesar la imagen si existe
             if (file) {
-                // Eliminar la imagen anterior si existe
-                if (existingItem.imagePath) {
-                    const oldImagePath = path_1.default.join(__dirname, '..', '..', 'uploads', 'vehicles', existingItem.imagePath);
-                    if (fs_1.default.existsSync(oldImagePath)) {
-                        fs_1.default.unlinkSync(oldImagePath);
+                try {
+                    // Eliminar imagen anterior de Cloudinary si existe
+                    if (existingItem.photoPublicId) {
+                        await this.uploadService.deleteImage(existingItem.photoPublicId);
                     }
+                    // Subir nueva imagen
+                    const uploadResult = await this.uploadService.uploadImage(file, 'inventory');
+                    item.photoUrl = uploadResult.url;
+                    item.photoPublicId = uploadResult.public_id;
                 }
-                // Solo guardar el nombre del archivo
-                item.imagePath = file.filename;
+                catch (error) {
+                    console.error('Error al procesar la imagen:', error);
+                    res.status(500).json({ message: 'Error al procesar la imagen del item' });
+                    return;
+                }
+            }
+            // Convertir campos opcionales vacíos a null
+            const optionalFields = [
+                'acquisitionDate',
+                'lastMaintenanceDate',
+                'nextMaintenanceDate',
+                'notes'
+            ];
+            optionalFields.forEach((field) => {
+                if (item[field] === '' || item[field] === undefined) {
+                    item[field] = null;
+                }
+            });
+            // Convertir strings a números si es necesario
+            if (typeof item.quantity === 'string' && item.quantity) {
+                item.quantity = parseInt(item.quantity, 10);
+            }
+            // Convertir fechas a objetos Date si vienen como string
+            if (typeof item.acquisitionDate === 'string' && item.acquisitionDate) {
+                item.acquisitionDate = new Date(item.acquisitionDate);
+            }
+            if (typeof item.lastMaintenanceDate === 'string' && item.lastMaintenanceDate) {
+                item.lastMaintenanceDate = new Date(item.lastMaintenanceDate);
+            }
+            if (typeof item.nextMaintenanceDate === 'string' && item.nextMaintenanceDate) {
+                item.nextMaintenanceDate = new Date(item.nextMaintenanceDate);
             }
             // Manejar usuarios responsables
-            if (item.responsibleUsers) {
-                // Si es un string, intentar parsearlo como JSON
-                if (typeof item.responsibleUsers === 'string') {
-                    try {
+            if (item.responsibleUsers !== undefined) {
+                try {
+                    // Si es un string, intentar parsearlo como JSON
+                    if (typeof item.responsibleUsers === 'string') {
                         item.responsibleUsers = JSON.parse(item.responsibleUsers);
                     }
-                    catch (error) {
-                        if (file) {
-                            fs_1.default.unlinkSync(file.path);
+                    if (Array.isArray(item.responsibleUsers)) {
+                        // Extraer los IDs de los usuarios
+                        const userIds = item.responsibleUsers.map((user) => user.id);
+                        // Verificar que todos los usuarios existan
+                        const users = await data_source_1.AppDataSource.getRepository(User_1.User).findBy({ id: (0, typeorm_1.In)(userIds) });
+                        if (users.length !== userIds.length) {
+                            res.status(400).json({
+                                message: 'Uno o más usuarios responsables no existen'
+                            });
+                            return;
                         }
-                        res.status(400).json({
-                            message: 'Formato inválido para usuarios responsables'
-                        });
-                        return;
+                        item.responsibleUsers = users;
                     }
                 }
-                if (Array.isArray(item.responsibleUsers)) {
-                    // Verificar que todos los usuarios existan
-                    const userIds = item.responsibleUsers.map((user) => user.id);
-                    const users = await data_source_1.AppDataSource.getRepository(User_1.User).findBy({ id: (0, typeorm_1.In)(userIds) });
-                    if (users.length !== userIds.length) {
-                        if (file) {
-                            fs_1.default.unlinkSync(file.path);
-                        }
-                        res.status(400).json({
-                            message: 'Uno o más usuarios responsables no existen'
-                        });
-                        return;
-                    }
-                    item.responsibleUsers = users;
+                catch (error) {
+                    console.error('Error al procesar usuarios responsables:', error);
+                    res.status(400).json({
+                        message: 'Error al procesar los usuarios responsables'
+                    });
+                    return;
                 }
             }
-            else if (item.responsibleUsers === null) {
-                // Si se envía null, significa que se quieren eliminar todos los responsables
-                item.responsibleUsers = [];
-            }
-            const updatedItem = await InventoryRepository_1.inventoryRepository.updateItem(id, item);
-            if (!updatedItem) {
-                if (file) {
-                    fs_1.default.unlinkSync(file.path);
-                }
-                res.status(404).json({ message: 'Item no encontrado' });
-                return;
-            }
+            const updatedItem = await InventoryRepository_1.inventoryRepository.updateItem(itemId, item);
             res.status(200).json(updatedItem);
         }
         catch (error) {
-            // Si hay un error y se subió un archivo, intentar eliminarlo
-            if (req.file) {
-                try {
-                    const filePath = path_1.default.join(process.cwd(), 'uploads', 'inventory', req.file.filename);
-                    if (fs_1.default.existsSync(filePath)) {
-                        fs_1.default.unlinkSync(filePath);
-                        console.log(`Archivo eliminado debido a error: ${filePath}`);
-                    }
-                }
-                catch (err) {
-                    console.error('Error al eliminar archivo tras fallo:', err);
-                }
-            }
-            console.error(error);
-            res.status(500).json({ message: 'Error al actualizar el item', error: error.message });
+            console.error('Error al actualizar item:', error);
+            res.status(500).json({ message: 'Error al actualizar el item' });
         }
     }
     async deleteItem(req, res) {
-        try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id)) {
-                res.status(400).json({ message: 'ID inválido' });
-                return;
-            }
-            // Obtener el item antes de eliminarlo para poder eliminar también su imagen
-            const itemToDelete = await InventoryRepository_1.inventoryRepository.getItemById(id);
-            if (!itemToDelete) {
-                res.status(404).json({ message: 'Item no encontrado' });
-                return;
-            }
-            // Eliminar la imagen si existe
-            if (itemToDelete.imagePath) {
-                try {
-                    // Usar directamente el nombre del archivo guardado
-                    const fullPath = path_1.default.join(process.cwd(), 'uploads', 'inventory', itemToDelete.imagePath);
-                    // Verificar si el archivo existe antes de intentar eliminarlo
-                    if (fs_1.default.existsSync(fullPath)) {
-                        fs_1.default.unlinkSync(fullPath);
-                        console.log(`Imagen eliminada: ${itemToDelete.imagePath}`);
-                    }
-                }
-                catch (err) {
-                    console.error('Error al eliminar la imagen:', err);
-                    // Continuamos con la eliminación aunque no se haya podido eliminar la imagen
-                }
-            }
-            const deletedItem = await InventoryRepository_1.inventoryRepository.deleteItem(id);
-            if (!deletedItem) {
-                res.status(404).json({ message: 'Item no encontrado' });
-                return;
-            }
-            res.status(200).json({ message: 'Item eliminado', item: deletedItem });
-        }
-        catch (error) {
-            console.error(error);
-            res.status(500).json({ message: 'Error al eliminar el item', error: error.message });
-        }
-    }
-    async updateItemImage(req, res) {
-        try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id)) {
-                res.status(400).json({ message: 'ID inválido' });
-                return;
-            }
-            const item = await InventoryRepository_1.inventoryRepository.getItemById(id);
-            if (!item) {
-                res.status(404).json({ message: 'Item no encontrado' });
-                return;
-            }
-            if (!req.file) {
-                res.status(400).json({ message: 'No se proporcionó una imagen' });
-                return;
-            }
-            // Eliminar la imagen anterior si existe
-            if (item.imagePath) {
-                try {
-                    const oldImagePath = path_1.default.join(process.cwd(), 'uploads', 'inventory', item.imagePath);
-                    if (fs_1.default.existsSync(oldImagePath)) {
-                        fs_1.default.unlinkSync(oldImagePath);
-                        console.log(`Imagen anterior eliminada: ${item.imagePath}`);
-                    }
-                }
-                catch (err) {
-                    console.error('Error al eliminar la imagen anterior:', err);
-                }
-            }
-            // Actualizar con la nueva imagen
-            item.imagePath = req.file.filename;
-            const updatedItem = await InventoryRepository_1.inventoryRepository.updateItem(id, item);
-            res.status(200).json({
-                message: 'Imagen actualizada exitosamente',
-                item: updatedItem
-            });
-        }
-        catch (error) {
-            console.error(error);
-            if (req.file) {
-                try {
-                    const filePath = path_1.default.join(process.cwd(), 'uploads', 'inventory', req.file.filename);
-                    if (fs_1.default.existsSync(filePath)) {
-                        fs_1.default.unlinkSync(filePath);
-                        console.log(`Archivo eliminado debido a error: ${filePath}`);
-                    }
-                }
-                catch (err) {
-                    console.error('Error al eliminar archivo tras fallo:', err);
-                }
-            }
-            res.status(500).json({ message: 'Error al actualizar la imagen', error: error.message });
-        }
-    }
-    async deleteItemImage(req, res) {
-        try {
-            const id = parseInt(req.params.id, 10);
-            if (isNaN(id)) {
-                res.status(400).json({ message: 'ID inválido' });
-                return;
-            }
-            const item = await InventoryRepository_1.inventoryRepository.getItemById(id);
-            if (!item) {
-                res.status(404).json({ message: 'Item no encontrado' });
-                return;
-            }
-            if (!item.imagePath) {
-                res.status(400).json({ message: 'El item no tiene una imagen' });
-                return;
-            }
-            // Eliminar la imagen
-            try {
-                const imagePath = path_1.default.join(process.cwd(), 'uploads', 'inventory', item.imagePath);
-                if (fs_1.default.existsSync(imagePath)) {
-                    fs_1.default.unlinkSync(imagePath);
-                    console.log(`Imagen eliminada: ${item.imagePath}`);
-                }
-            }
-            catch (err) {
-                console.error('Error al eliminar la imagen:', err);
-            }
-            // Actualizar el item para eliminar la referencia a la imagen
-            item.imagePath = null;
-            const updatedItem = await InventoryRepository_1.inventoryRepository.updateItem(id, item);
-            res.status(200).json({
-                message: 'Imagen eliminada exitosamente',
-                item: updatedItem
-            });
-        }
-        catch (error) {
-            console.error(error);
-            res.status(500).json({ message: 'Error al eliminar la imagen', error: error.message });
-        }
-    }
-    async addResponsibleUser(req, res) {
-        try {
-            const itemId = parseInt(req.params.id, 10);
-            const { userId } = req.body;
-            if (isNaN(itemId) || !userId) {
-                res.status(400).json({ message: 'ID de item y usuario requeridos' });
-                return;
-            }
-            const item = await InventoryRepository_1.inventoryRepository.getItemById(itemId);
-            if (!item) {
-                res.status(404).json({ message: 'Item no encontrado' });
-                return;
-            }
-            const user = await UserRepository_1.userRepository.getUserById(userId);
-            if (!user) {
-                res.status(404).json({ message: 'Usuario no encontrado' });
-                return;
-            }
-            // Verificar si el usuario ya es responsable
-            const isAlreadyResponsible = item.responsibleUsers.some(u => u.id === userId);
-            if (isAlreadyResponsible) {
-                res.status(400).json({ message: 'El usuario ya es responsable de este item' });
-                return;
-            }
-            // Agregar el usuario como responsable
-            item.responsibleUsers.push(user);
-            await InventoryRepository_1.inventoryRepository.updateItem(itemId, { responsibleUsers: item.responsibleUsers });
-            res.status(200).json({
-                message: 'Usuario agregado como responsable exitosamente',
-                item: {
-                    ...item,
-                    responsibleUsers: item.responsibleUsers
-                }
-            });
-        }
-        catch (error) {
-            console.error('Error al agregar responsable:', error);
-            res.status(500).json({
-                message: 'Error en el servidor',
-                error: error.message
-            });
-        }
-    }
-    async removeResponsibleUser(req, res) {
-        try {
-            const itemId = parseInt(req.params.id, 10);
-            const { userId } = req.body;
-            if (isNaN(itemId) || !userId) {
-                res.status(400).json({ message: 'ID de item y usuario requeridos' });
-                return;
-            }
-            const item = await InventoryRepository_1.inventoryRepository.getItemById(itemId);
-            if (!item) {
-                res.status(404).json({ message: 'Item no encontrado' });
-                return;
-            }
-            // Verificar si el usuario es responsable
-            const userIndex = item.responsibleUsers.findIndex(u => u.id === userId);
-            if (userIndex === -1) {
-                res.status(400).json({ message: 'El usuario no es responsable de este item' });
-                return;
-            }
-            // Remover el usuario de los responsables
-            item.responsibleUsers.splice(userIndex, 1);
-            await InventoryRepository_1.inventoryRepository.updateItem(itemId, { responsibleUsers: item.responsibleUsers });
-            res.status(200).json({
-                message: 'Usuario removido como responsable exitosamente',
-                item: {
-                    ...item,
-                    responsibleUsers: item.responsibleUsers
-                }
-            });
-        }
-        catch (error) {
-            console.error('Error al remover responsable:', error);
-            res.status(500).json({
-                message: 'Error en el servidor',
-                error: error.message
-            });
-        }
-    }
-    async getResponsibleUsers(req, res) {
         try {
             const itemId = parseInt(req.params.id, 10);
             if (isNaN(itemId)) {
@@ -481,19 +285,238 @@ class InventoryController {
                 res.status(404).json({ message: 'Item no encontrado' });
                 return;
             }
-            res.status(200).json({
-                message: 'Responsables del item obtenidos exitosamente',
-                responsibleUsers: item.responsibleUsers
+            // Eliminar imagen de Cloudinary si existe
+            if (item.photoPublicId) {
+                try {
+                    await this.uploadService.deleteImage(item.photoPublicId);
+                }
+                catch (error) {
+                    console.error('Error al eliminar imagen de Cloudinary:', error);
+                    // Continuar con la eliminación del item aunque falle la eliminación de la imagen
+                }
+            }
+            await InventoryRepository_1.inventoryRepository.deleteItem(itemId);
+            res.status(200).json({ message: 'Item eliminado exitosamente' });
+        }
+        catch (error) {
+            console.error('Error al eliminar item:', error);
+            res.status(500).json({ message: 'Error al eliminar el item' });
+        }
+    }
+    async updateItemImage(req, res) {
+        try {
+            const id = parseInt(req.params.id, 10);
+            const file = req.file;
+            if (!file) {
+                res.status(400).json({ message: 'No se proporcionó ninguna imagen' });
+                return res.status(500).json({ message: 'Error al actualizar la imagen', error: 'No se proporcionó ninguna imagen' });
+            }
+            const item = await InventoryRepository_1.inventoryRepository.getItemById(id);
+            if (!item) {
+                res.status(404).json({ message: 'Item no encontrado' });
+                return res.status(500).json({ message: 'Error al actualizar la imagen', error: 'Item no encontrado' });
+            }
+            // Eliminar la imagen anterior si existe
+            if (item.photoPublicId) {
+                try {
+                    await this.uploadService.deleteImage(item.photoPublicId);
+                }
+                catch (error) {
+                    console.error('Error al eliminar la imagen anterior:', error);
+                }
+            }
+            try {
+                // Subir nueva imagen a Cloudinary
+                const uploadResult = await this.uploadService.uploadImage(file, 'inventory');
+                // Actualizar con los nuevos datos
+                item.photoUrl = uploadResult.url;
+                item.photoPublicId = uploadResult.public_id;
+                await InventoryRepository_1.inventoryRepository.updateItem(id, {
+                    photoUrl: uploadResult.url,
+                    photoPublicId: uploadResult.public_id
+                });
+                return res.status(200).json({
+                    message: 'Imagen del item actualizada exitosamente',
+                    item: {
+                        ...item,
+                        photoUrl: item.photoUrl
+                    }
+                });
+            }
+            catch (uploadError) {
+                return res.status(500).json({
+                    message: 'Error al subir la imagen',
+                    error: uploadError
+                });
+            }
+        }
+        catch (error) {
+            return res.status(500).json({ message: 'Error al actualizar la imagen', error });
+        }
+    }
+    async deleteItemImage(req, res) {
+        try {
+            const id = parseInt(req.params.id, 10);
+            if (isNaN(id)) {
+                return res.status(400).json({ message: 'ID de item inválido' });
+            }
+            const item = await InventoryRepository_1.inventoryRepository.getItemById(id);
+            if (!item) {
+                return res.status(404).json({ message: 'Item no encontrado' });
+            }
+            if (!item.photoPublicId) {
+                return res.status(400).json({ message: 'El item no tiene imagen' });
+            }
+            // Eliminar la imagen de Cloudinary
+            try {
+                await this.uploadService.deleteImage(item.photoPublicId);
+            }
+            catch (error) {
+                console.error('Error al eliminar la imagen de Cloudinary:', error);
+                return res.status(500).json({ message: 'Error al eliminar la imagen' });
+            }
+            // Actualizar el item para eliminar las referencias a la imagen
+            const updatedItem = await InventoryRepository_1.inventoryRepository.updateItem(id, {
+                photoUrl: null,
+                photoPublicId: null
+            });
+            return res.status(200).json({
+                message: 'Imagen eliminada exitosamente',
+                item: updatedItem
             });
         }
         catch (error) {
-            console.error('Error al obtener responsables:', error);
-            res.status(500).json({
-                message: 'Error en el servidor',
-                error: error.message
+            console.error('Error al eliminar imagen:', error);
+            return res.status(500).json({ message: 'Error al eliminar la imagen' });
+        }
+    }
+    async addResponsibleUser(req, res) {
+        var _a;
+        try {
+            const itemId = parseInt(req.params.id, 10);
+            const { userId } = req.body;
+            if (isNaN(itemId)) {
+                res.status(400).json({ message: 'ID de item inválido' });
+                return;
+            }
+            if (!userId) {
+                res.status(400).json({ message: 'ID de usuario requerido' });
+                return;
+            }
+            const item = await InventoryRepository_1.inventoryRepository.getItemById(itemId);
+            if (!item) {
+                res.status(404).json({ message: 'Item no encontrado' });
+                return;
+            }
+            const user = await data_source_1.AppDataSource.getRepository(User_1.User).findOneBy({ id: userId });
+            if (!user) {
+                res.status(404).json({ message: 'Usuario no encontrado' });
+                return;
+            }
+            // Verificar si el usuario ya es responsable
+            const isAlreadyResponsible = (_a = item.responsibleUsers) === null || _a === void 0 ? void 0 : _a.some(u => u.id === userId);
+            if (isAlreadyResponsible) {
+                res.status(400).json({ message: 'El usuario ya es responsable de este item' });
+                return;
+            }
+            // Agregar el usuario a la lista de responsables
+            item.responsibleUsers = [...(item.responsibleUsers || []), user];
+            await InventoryRepository_1.inventoryRepository.updateItem(itemId, item);
+            res.status(200).json({
+                message: 'Usuario agregado como responsable exitosamente',
+                item: {
+                    ...item,
+                    responsibleUsers: item.responsibleUsers.map(user => ({
+                        id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        fullName: user.fullName,
+                        role: user.role,
+                        isActive: user.isActive
+                    }))
+                }
             });
+        }
+        catch (error) {
+            console.error('Error al agregar usuario responsable:', error);
+            res.status(500).json({ message: 'Error al agregar usuario responsable' });
+        }
+    }
+    async removeResponsibleUser(req, res) {
+        var _a, _b;
+        try {
+            const itemId = parseInt(req.params.id, 10);
+            const { userId } = req.body;
+            if (isNaN(itemId)) {
+                res.status(400).json({ message: 'ID de item inválido' });
+                return;
+            }
+            if (!userId) {
+                res.status(400).json({ message: 'ID de usuario requerido' });
+                return;
+            }
+            const item = await InventoryRepository_1.inventoryRepository.getItemById(itemId);
+            if (!item) {
+                res.status(404).json({ message: 'Item no encontrado' });
+                return;
+            }
+            // Verificar si el usuario es responsable
+            const isResponsible = (_a = item.responsibleUsers) === null || _a === void 0 ? void 0 : _a.some(u => u.id === userId);
+            if (!isResponsible) {
+                res.status(400).json({ message: 'El usuario no es responsable de este item' });
+                return;
+            }
+            // Remover el usuario de la lista de responsables
+            item.responsibleUsers = ((_b = item.responsibleUsers) === null || _b === void 0 ? void 0 : _b.filter(u => u.id !== userId)) || [];
+            await InventoryRepository_1.inventoryRepository.updateItem(itemId, item);
+            res.status(200).json({
+                message: 'Usuario removido como responsable exitosamente',
+                item: {
+                    ...item,
+                    responsibleUsers: item.responsibleUsers.map(user => ({
+                        id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        fullName: user.fullName,
+                        role: user.role,
+                        isActive: user.isActive
+                    }))
+                }
+            });
+        }
+        catch (error) {
+            console.error('Error al remover usuario responsable:', error);
+            res.status(500).json({ message: 'Error al remover usuario responsable' });
+        }
+    }
+    async getResponsibleUsers(req, res) {
+        var _a;
+        try {
+            const itemId = parseInt(req.params.id, 10);
+            if (isNaN(itemId)) {
+                res.status(400).json({ message: 'ID de item inválido' });
+                return;
+            }
+            const item = await InventoryRepository_1.inventoryRepository.getItemById(itemId);
+            if (!item) {
+                res.status(404).json({ message: 'Item no encontrado' });
+                return;
+            }
+            const responsibleUsers = ((_a = item.responsibleUsers) === null || _a === void 0 ? void 0 : _a.map(user => ({
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                fullName: user.fullName,
+                role: user.role,
+                isActive: user.isActive
+            }))) || [];
+            res.status(200).json(responsibleUsers);
+        }
+        catch (error) {
+            console.error('Error al obtener usuarios responsables:', error);
+            res.status(500).json({ message: 'Error al obtener usuarios responsables' });
         }
     }
 }
-exports.InventoryController = InventoryController;
+// Exportar la instancia con el nombre correcto
 exports.inventoryController = new InventoryController();

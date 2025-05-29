@@ -40,6 +40,7 @@ app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '..'
 app.use('/uploads/users', express_1.default.static(path_1.default.join(__dirname, '..', 'uploads', 'users')));
 app.use('/uploads/vehicles', express_1.default.static(path_1.default.join(__dirname, '..', 'uploads', 'vehicles')));
 app.use('/uploads/inventory', express_1.default.static(path_1.default.join(__dirname, '..', 'uploads', 'inventory')));
+app.use('/uploads/housing', express_1.default.static(path_1.default.join(__dirname, '..', 'uploads', 'housing')));
 // Rutas
 app.use('/api/auth', AuthRoutes_1.default);
 app.use('/api/users', userRoutes_1.default);

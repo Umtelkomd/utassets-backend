@@ -36,8 +36,11 @@ export class Inventory {
     @Column({ type: 'text', nullable: true })
     notes: string | null;
 
-    @Column({ name: 'image_path', type: 'varchar', nullable: true })
-    imagePath: string | null;
+    @Column({ type: 'varchar', nullable: true })
+    photoUrl!: string | null;
+
+    @Column({ type: 'varchar', nullable: true })
+    photoPublicId!: string | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
