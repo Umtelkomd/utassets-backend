@@ -5,11 +5,13 @@ const RentalStrategy_1 = require("./RentalStrategy");
 class VehicleRentalStrategy extends RentalStrategy_1.BaseRentalStrategy {
     calculateTotal(rental) {
         var _a;
-        const days = this.calculateDays(rental.startDate, rental.endDate);
+        // Usar el campo days almacenado, o calcularlo como fallback
+        const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
         console.log('Fechas recibidas:', {
             startDate: rental.startDate,
             endDate: rental.endDate,
-            daysCalculated: days
+            daysCalculated: days,
+            daysStored: rental.days
         });
         // Aseguramos que el costo diario sea exactamente 200.00
         const dailyCost = Math.round(rental.dailyCost * 100) / 100;
@@ -64,7 +66,7 @@ class VehicleRentalStrategy extends RentalStrategy_1.BaseRentalStrategy {
         };
     }
     getRequiredFields() {
-        return ['vehicleId', 'startDate', 'endDate', 'dailyCost', 'dealerName', 'dealerAddress', 'dealerPhone'];
+        return ['vehicleId', 'startDate', 'endDate', 'days', 'dailyCost', 'dealerName', 'dealerAddress', 'dealerPhone'];
     }
     getSpecificFields() {
         return {

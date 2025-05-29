@@ -4,7 +4,7 @@ exports.HousingRentalStrategy = void 0;
 class HousingRentalStrategy {
     calculateTotal(rental) {
         var _a;
-        const days = this.calculateDays(rental.startDate, rental.endDate);
+        const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
         const guestCount = ((_a = rental.metadata) === null || _a === void 0 ? void 0 : _a.guestCount) || 1;
         return rental.dailyCost * days * guestCount;
     }
@@ -21,6 +21,7 @@ class HousingRentalStrategy {
             'housingId',
             'startDate',
             'endDate',
+            'days',
             'dailyCost',
             'guestCount'
         ];

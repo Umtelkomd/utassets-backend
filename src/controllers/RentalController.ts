@@ -30,6 +30,16 @@ export class RentalController {
                 endDate: new Date(rentalData.endDate)
             };
 
+            // Calcular días si no vienen del frontend
+            if (!rentalWithDates.days) {
+                const startDate = new Date(rentalWithDates.startDate);
+                const endDate = new Date(rentalWithDates.endDate);
+                startDate.setHours(0, 0, 0, 0);
+                endDate.setHours(0, 0, 0, 0);
+                const diffTime = endDate.getTime() - startDate.getTime();
+                rentalWithDates.days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            }
+
             // Obtener la estrategia correspondiente
             const strategy = this.strategyFactory.getStrategy(rentalType);
 
@@ -119,6 +129,16 @@ export class RentalController {
 
             const strategy = this.strategyFactory.getStrategy(rental.type);
             const { metadata = {}, ...rentalData } = req.body;
+
+            // Calcular días si no vienen del frontend y se han actualizado las fechas
+            if (rentalData.startDate && rentalData.endDate && !rentalData.days) {
+                const startDate = new Date(rentalData.startDate);
+                const endDate = new Date(rentalData.endDate);
+                startDate.setHours(0, 0, 0, 0);
+                endDate.setHours(0, 0, 0, 0);
+                const diffTime = endDate.getTime() - startDate.getTime();
+                rentalData.days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            }
 
             // Si el metadata viene en la raíz del body, lo preparamos con la estrategia
             const preparedMetadata = metadata.dealerName ? metadata : strategy.prepareMetadata(req.body);

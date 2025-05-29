@@ -3,7 +3,7 @@ import { RentalStrategy, ValidationResult } from './RentalStrategy';
 
 export class HousingRentalStrategy implements RentalStrategy {
     calculateTotal(rental: Rental): number {
-        const days = this.calculateDays(rental.startDate, rental.endDate);
+        const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
         const guestCount = rental.metadata?.guestCount || 1;
         return rental.dailyCost * days * guestCount;
     }
@@ -23,6 +23,7 @@ export class HousingRentalStrategy implements RentalStrategy {
             'housingId',
             'startDate',
             'endDate',
+            'days',
             'dailyCost',
             'guestCount'
         ];

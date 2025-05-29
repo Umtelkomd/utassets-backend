@@ -3,11 +3,13 @@ import { BaseRentalStrategy, ValidationResult } from './RentalStrategy';
 
 export class VehicleRentalStrategy extends BaseRentalStrategy {
     calculateTotal(rental: Rental): number {
-        const days = this.calculateDays(rental.startDate, rental.endDate);
+        // Usar el campo days almacenado, o calcularlo como fallback
+        const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
         console.log('Fechas recibidas:', {
             startDate: rental.startDate,
             endDate: rental.endDate,
-            daysCalculated: days
+            daysCalculated: days,
+            daysStored: rental.days
         });
 
         // Aseguramos que el costo diario sea exactamente 200.00
@@ -74,7 +76,7 @@ export class VehicleRentalStrategy extends BaseRentalStrategy {
     }
 
     getRequiredFields(): string[] {
-        return ['vehicleId', 'startDate', 'endDate', 'dailyCost', 'dealerName', 'dealerAddress', 'dealerPhone'];
+        return ['vehicleId', 'startDate', 'endDate', 'days', 'dailyCost', 'dealerName', 'dealerAddress', 'dealerPhone'];
     }
 
     getSpecificFields(): Record<string, any> {

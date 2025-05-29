@@ -4,7 +4,8 @@ exports.ItemRentalStrategy = void 0;
 class ItemRentalStrategy {
     calculateTotal(rental) {
         var _a;
-        const days = this.calculateDays(rental.startDate, rental.endDate);
+        // Usar el campo days almacenado, o calcularlo como fallback
+        const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
         const baseCost = rental.dailyCost * days;
         // Lógica específica para items (descuento por grupo)
         const peopleCount = ((_a = rental.metadata) === null || _a === void 0 ? void 0 : _a.peopleCount) || 1;
@@ -20,7 +21,7 @@ class ItemRentalStrategy {
         return failedValidation || { isValid: true };
     }
     getRequiredFields() {
-        return ['inventoryId', 'startDate', 'endDate', 'dailyCost', 'peopleCount'];
+        return ['inventoryId', 'startDate', 'endDate', 'days', 'dailyCost', 'peopleCount'];
     }
     getSpecificFields() {
         return {

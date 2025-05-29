@@ -44,6 +44,9 @@ export class Rental {
     @Column({ name: 'end_date', type: 'date' })
     endDate!: Date;
 
+    @Column({ name: 'days', type: 'int' })
+    days!: number;
+
     @Column({ name: 'daily_cost', type: 'decimal', precision: 10, scale: 2 })
     dailyCost!: number;
 

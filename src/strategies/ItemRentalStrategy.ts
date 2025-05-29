@@ -3,7 +3,8 @@ import { RentalStrategy, ValidationResult } from './RentalStrategy';
 
 export class ItemRentalStrategy implements RentalStrategy {
     calculateTotal(rental: Rental): number {
-        const days = this.calculateDays(rental.startDate, rental.endDate);
+        // Usar el campo days almacenado, o calcularlo como fallback
+        const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
         const baseCost = rental.dailyCost * days;
 
         // Lógica específica para items (descuento por grupo)
@@ -24,7 +25,7 @@ export class ItemRentalStrategy implements RentalStrategy {
     }
 
     getRequiredFields(): string[] {
-        return ['inventoryId', 'startDate', 'endDate', 'dailyCost', 'peopleCount'];
+        return ['inventoryId', 'startDate', 'endDate', 'days', 'dailyCost', 'peopleCount'];
     }
 
     getSpecificFields(): Record<string, any> {

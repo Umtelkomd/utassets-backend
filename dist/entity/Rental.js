@@ -67,6 +67,10 @@ __decorate([
     __metadata("design:type", Date)
 ], Rental.prototype, "endDate", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'days', type: 'int' }),
+    __metadata("design:type", Number)
+], Rental.prototype, "days", void 0);
+__decorate([
     (0, typeorm_1.Column)({ name: 'daily_cost', type: 'decimal', precision: 10, scale: 2 }),
     __metadata("design:type", Number)
 ], Rental.prototype, "dailyCost", void 0);

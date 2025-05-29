@@ -65,6 +65,13 @@ class HousingController {
             if (typeof housing.squareMeters === 'string') {
                 housing.squareMeters = parseFloat(housing.squareMeters);
             }
+            // Convertir isAvailable de string a boolean si es necesario
+            if (typeof housing.isAvailable === 'string') {
+                housing.isAvailable = housing.isAvailable === 'true';
+            }
+            else if (housing.isAvailable === undefined) {
+                housing.isAvailable = true; // Valor por defecto
+            }
             // Convertir amenities de string a array si viene como string
             if (typeof housing.amenities === 'string') {
                 housing.amenities = housing.amenities.split(',').map((item) => item.trim());
@@ -131,6 +138,10 @@ class HousingController {
             }
             if (typeof housing.squareMeters === 'string') {
                 housing.squareMeters = parseFloat(housing.squareMeters);
+            }
+            // Convertir isAvailable de string a boolean si es necesario
+            if (typeof housing.isAvailable === 'string') {
+                housing.isAvailable = housing.isAvailable === 'true';
             }
             // Convertir amenities de string a array si viene como string
             if (typeof housing.amenities === 'string') {
