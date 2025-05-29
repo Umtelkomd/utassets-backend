@@ -5,39 +5,9 @@ export class VehicleRentalStrategy extends BaseRentalStrategy {
     calculateTotal(rental: Rental): number {
         // Usar el campo days almacenado, o calcularlo como fallback
         const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
-        console.log('Fechas recibidas:', {
-            startDate: rental.startDate,
-            endDate: rental.endDate,
-            daysCalculated: days,
-            daysStored: rental.days
-        });
+        const baseCost = rental.dailyCost * days;
 
-        // Aseguramos que el costo diario sea exactamente 200.00
-        const dailyCost = Math.round(rental.dailyCost * 100) / 100;
-        console.log('Costos:', {
-            dailyCostReceived: rental.dailyCost,
-            dailyCostRounded: dailyCost
-        });
-
-        const baseCost = Math.round(dailyCost * days * 100) / 100;
-        console.log('Cálculo base:', {
-            dailyCost,
-            days,
-            baseCost
-        });
-
-        // Lógica específica para vehículos (cargo por kilometraje)
-        const mileage = rental.metadata?.mileage || 0;
-        const mileageCharge = Math.round(mileage * 0.1 * 100) / 100; // $0.10 por kilómetro
-
-        const total = Math.round((baseCost + mileageCharge) * 100) / 100;
-        console.log('Total final:', {
-            baseCost,
-            mileageCharge,
-            total
-        });
-
-        return total;
+        return Number(baseCost.toFixed(2));
     }
 
     validate(rental: Rental): ValidationResult {
@@ -80,17 +50,14 @@ export class VehicleRentalStrategy extends BaseRentalStrategy {
     }
 
     getSpecificFields(): Record<string, any> {
-        return {
-            mileage: 0
-        };
+        return {};
     }
 
     prepareMetadata(data: any): Record<string, any> {
         return {
             dealerName: data.dealerName,
             dealerAddress: data.dealerAddress,
-            dealerPhone: data.dealerPhone,
-            mileage: data.mileage || 0
+            dealerPhone: data.dealerPhone
         };
     }
 } 

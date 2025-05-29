@@ -1,5 +1,9 @@
 import { AppDataSource } from '../config/data-source';
 import { User, UserRole } from '../entity/User';
+import { Vehicle } from '../entity/Vehicle';
+import { Inventory } from '../entity/Inventory';
+import { Report } from '../entity/Report';
+import { Comment } from '../entity/Comment';
 import bcrypt from 'bcrypt';
 import { DeepPartial } from 'typeorm';
 
@@ -75,8 +79,97 @@ class UserRepository {
             return null;
         }
 
-        await this.repository.delete(id);
-        return userToDelete;
+        // Iniciar una transacción para asegurar la integridad de los datos
+        const queryRunner = AppDataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+            // 1. Remover el usuario como responsable de vehículos
+            const vehicleRepository = queryRunner.manager.getRepository(Vehicle);
+            const vehiclesWithUser = await vehicleRepository.find({
+                relations: ['responsibleUsers'],
+                where: {
+                    responsibleUsers: {
+                        id: id
+                    }
+                }
+            });
+
+            for (const vehicle of vehiclesWithUser) {
+                vehicle.responsibleUsers = vehicle.responsibleUsers.filter(user => user.id !== id);
+                await vehicleRepository.save(vehicle);
+            }
+
+            // 2. Remover el usuario como responsable de inventario
+            const inventoryRepository = queryRunner.manager.getRepository(Inventory);
+            const inventoriesWithUser = await inventoryRepository.find({
+                relations: ['responsibleUsers'],
+                where: {
+                    responsibleUsers: {
+                        id: id
+                    }
+                }
+            });
+
+            for (const inventory of inventoriesWithUser) {
+                inventory.responsibleUsers = inventory.responsibleUsers.filter(user => user.id !== id);
+                await inventoryRepository.save(inventory);
+            }
+
+            // 3. Manejar reportes creados por el usuario
+            const reportRepository = queryRunner.manager.getRepository(Report);
+            const userReports = await reportRepository.find({
+                where: { user: { id: id } }
+            });
+
+            // Opción A: Eliminar todos los reportes del usuario (incluyendo comentarios)
+            // Si prefieres mantener los reportes, cambiar user a null (ver Opción B abajo)
+            for (const report of userReports) {
+                await reportRepository.delete(report.id);
+            }
+
+            // Opción B: Mantener reportes pero quitar la referencia al usuario
+            // for (const report of userReports) {
+            //     report.user = null;
+            //     await reportRepository.save(report);
+            // }
+
+            // 4. Manejar comentarios creados por el usuario
+            const commentRepository = queryRunner.manager.getRepository(Comment);
+            const userComments = await commentRepository.find({
+                where: { user: { id: id } }
+            });
+
+            // Opción A: Eliminar todos los comentarios del usuario
+            // Si prefieres mantener los comentarios, cambiar user a null (ver Opción B abajo)
+            for (const comment of userComments) {
+                await commentRepository.delete(comment.id);
+            }
+
+            // Opción B: Mantener comentarios pero quitar la referencia al usuario
+            // for (const comment of userComments) {
+            //     comment.user = null;
+            //     await commentRepository.save(comment);
+            // }
+
+            // 5. Finalmente, eliminar el usuario
+            await queryRunner.manager.delete(User, id);
+
+            // Confirmar la transacción
+            await queryRunner.commitTransaction();
+
+            return userToDelete;
+
+        } catch (error) {
+            // Revertir la transacción en caso de error
+            await queryRunner.rollbackTransaction();
+            console.error('Error al eliminar usuario y sus referencias:', error);
+            throw error;
+        } finally {
+            // Liberar el queryRunner
+            await queryRunner.release();
+        }
     }
 
     async verifyPassword(user: User, password: string): Promise<boolean> {

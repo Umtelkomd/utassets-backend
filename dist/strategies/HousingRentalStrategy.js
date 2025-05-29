@@ -6,7 +6,8 @@ class HousingRentalStrategy {
         var _a;
         const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
         const guestCount = ((_a = rental.metadata) === null || _a === void 0 ? void 0 : _a.guestCount) || 1;
-        return rental.dailyCost * days * guestCount;
+        const total = rental.dailyCost * days * guestCount;
+        return Number(total.toFixed(2));
     }
     validate(rental) {
         const validations = [

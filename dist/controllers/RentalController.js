@@ -52,8 +52,8 @@ class RentalController {
             Object.assign(rental, {
                 type: rentalType,
                 ...rentalWithDates,
-                // Aseguramos que el costo diario sea entero y el total tenga 2 decimales
-                dailyCost: Math.round(rentalWithDates.dailyCost),
+                // Mantener precisión en el costo diario y total con 2 decimales
+                dailyCost: Math.round(rentalWithDates.dailyCost * 100) / 100,
                 total: Math.round(rentalWithDates.total * 100) / 100,
                 metadata: strategy.prepareMetadata({ ...rentalWithDates, ...metadata })
             });
@@ -109,46 +109,97 @@ class RentalController {
     async update(req, res) {
         var _a;
         try {
+            console.log('=== UPDATE RENTAL DEBUG ===');
+            console.log('Request body:', req.body);
+            console.log('Rental ID from params:', req.params.id);
             const rental = await this.repository.findOne({ where: { id: Number(req.params.id) } });
             if (!rental) {
                 return res.status(404).json({ message: 'Alquiler no encontrado' });
             }
+            console.log('Current rental before update:', {
+                id: rental.id,
+                type: rental.type,
+                inventoryId: rental.inventoryId,
+                vehicleId: rental.vehicleId,
+                housingId: rental.housingId
+            });
             const strategy = this.strategyFactory.getStrategy(rental.type);
             const { metadata = {}, ...rentalData } = req.body;
+            console.log('Extracted rentalData:', rentalData);
+            console.log('Extracted metadata:', metadata);
+            // Convertir fechas de string a Date si vienen como string
+            const processedRentalData = { ...rentalData };
+            if (rentalData.startDate && typeof rentalData.startDate === 'string') {
+                processedRentalData.startDate = new Date(rentalData.startDate);
+            }
+            if (rentalData.endDate && typeof rentalData.endDate === 'string') {
+                processedRentalData.endDate = new Date(rentalData.endDate);
+            }
             // Calcular días si no vienen del frontend y se han actualizado las fechas
-            if (rentalData.startDate && rentalData.endDate && !rentalData.days) {
-                const startDate = new Date(rentalData.startDate);
-                const endDate = new Date(rentalData.endDate);
+            if (processedRentalData.startDate && processedRentalData.endDate && !processedRentalData.days) {
+                const startDate = new Date(processedRentalData.startDate);
+                const endDate = new Date(processedRentalData.endDate);
                 startDate.setHours(0, 0, 0, 0);
                 endDate.setHours(0, 0, 0, 0);
                 const diffTime = endDate.getTime() - startDate.getTime();
-                rentalData.days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                processedRentalData.days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
             }
-            // Si el metadata viene en la raíz del body, lo preparamos con la estrategia
-            const preparedMetadata = metadata.dealerName ? metadata : strategy.prepareMetadata(req.body);
+            // Aplicar las mismas transformaciones numéricas que en create
             const updatedData = {
-                ...rentalData,
-                metadata: preparedMetadata
+                ...processedRentalData,
+                metadata: strategy.prepareMetadata({ ...processedRentalData, ...metadata })
             };
-            console.log('Datos a actualizar:', {
-                rentalData,
-                metadata,
-                preparedMetadata,
-                updatedData
-            });
+            // Procesar campos numéricos si están presentes
+            if (updatedData.dailyCost !== undefined) {
+                updatedData.dailyCost = Math.round(updatedData.dailyCost * 100) / 100;
+            }
+            if (updatedData.total !== undefined) {
+                updatedData.total = Math.round(updatedData.total * 100) / 100;
+            }
+            if (updatedData.inventoryId !== undefined) {
+                updatedData.inventoryId = parseInt(updatedData.inventoryId, 10);
+            }
+            if (updatedData.vehicleId !== undefined) {
+                updatedData.vehicleId = parseInt(updatedData.vehicleId, 10);
+            }
+            if (updatedData.housingId !== undefined) {
+                updatedData.housingId = parseInt(updatedData.housingId, 10);
+            }
+            console.log('Final updatedData:', updatedData);
+            // Debug específico para inventoryId
+            if (updatedData.inventoryId !== undefined) {
+                console.log('InventoryId update analysis:', {
+                    oldValue: rental.inventoryId,
+                    newValue: updatedData.inventoryId,
+                    oldType: typeof rental.inventoryId,
+                    newType: typeof updatedData.inventoryId,
+                    willUpdate: rental.inventoryId !== updatedData.inventoryId,
+                    strictEqual: rental.inventoryId === updatedData.inventoryId
+                });
+            }
             // Validar el alquiler actualizado
             const validation = strategy.validate({ ...rental, ...updatedData });
             if (!validation.isValid) {
-                console.log('Error de validación:', validation);
+                console.log('Validation failed:', validation);
                 return res.status(validation.status || 400).json({
                     message: validation.message || ((_a = validation.errors) === null || _a === void 0 ? void 0 : _a.join(', '))
                 });
             }
-            // Calcular el nuevo total
-            updatedData.total = rentalData.total || strategy.calculateTotal({ ...rental, ...updatedData });
-            this.repository.merge(rental, updatedData);
-            const result = await this.repository.save(rental);
-            return res.json(result);
+            console.log('Before merge - rental:', {
+                id: rental.id,
+                inventoryId: rental.inventoryId
+            });
+            // Usar update directo en lugar de merge + save para evitar problemas con relaciones
+            const updateResult = await this.repository.update(rental.id, updatedData);
+            console.log('Update result:', updateResult);
+            // Obtener el rental actualizado desde la base de datos
+            const updatedRental = await this.repository.findOne({ where: { id: rental.id } });
+            console.log('After update - fresh from DB:', {
+                id: updatedRental === null || updatedRental === void 0 ? void 0 : updatedRental.id,
+                inventoryId: updatedRental === null || updatedRental === void 0 ? void 0 : updatedRental.inventoryId
+            });
+            console.log('=== END UPDATE DEBUG ===');
+            return res.json(updatedRental);
         }
         catch (error) {
             console.error('Error al actualizar el alquiler:', error);

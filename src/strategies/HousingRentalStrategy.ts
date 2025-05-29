@@ -5,7 +5,9 @@ export class HousingRentalStrategy implements RentalStrategy {
     calculateTotal(rental: Rental): number {
         const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
         const guestCount = rental.metadata?.guestCount || 1;
-        return rental.dailyCost * days * guestCount;
+        const total = rental.dailyCost * days * guestCount;
+
+        return Number(total.toFixed(2));
     }
 
     validate(rental: Rental): ValidationResult {

@@ -4,37 +4,10 @@ exports.VehicleRentalStrategy = void 0;
 const RentalStrategy_1 = require("./RentalStrategy");
 class VehicleRentalStrategy extends RentalStrategy_1.BaseRentalStrategy {
     calculateTotal(rental) {
-        var _a;
         // Usar el campo days almacenado, o calcularlo como fallback
         const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
-        console.log('Fechas recibidas:', {
-            startDate: rental.startDate,
-            endDate: rental.endDate,
-            daysCalculated: days,
-            daysStored: rental.days
-        });
-        // Aseguramos que el costo diario sea exactamente 200.00
-        const dailyCost = Math.round(rental.dailyCost * 100) / 100;
-        console.log('Costos:', {
-            dailyCostReceived: rental.dailyCost,
-            dailyCostRounded: dailyCost
-        });
-        const baseCost = Math.round(dailyCost * days * 100) / 100;
-        console.log('Cálculo base:', {
-            dailyCost,
-            days,
-            baseCost
-        });
-        // Lógica específica para vehículos (cargo por kilometraje)
-        const mileage = ((_a = rental.metadata) === null || _a === void 0 ? void 0 : _a.mileage) || 0;
-        const mileageCharge = Math.round(mileage * 0.1 * 100) / 100; // $0.10 por kilómetro
-        const total = Math.round((baseCost + mileageCharge) * 100) / 100;
-        console.log('Total final:', {
-            baseCost,
-            mileageCharge,
-            total
-        });
-        return total;
+        const baseCost = rental.dailyCost * days;
+        return Number(baseCost.toFixed(2));
     }
     validate(rental) {
         var _a, _b, _c;
@@ -69,16 +42,13 @@ class VehicleRentalStrategy extends RentalStrategy_1.BaseRentalStrategy {
         return ['vehicleId', 'startDate', 'endDate', 'days', 'dailyCost', 'dealerName', 'dealerAddress', 'dealerPhone'];
     }
     getSpecificFields() {
-        return {
-            mileage: 0
-        };
+        return {};
     }
     prepareMetadata(data) {
         return {
             dealerName: data.dealerName,
             dealerAddress: data.dealerAddress,
-            dealerPhone: data.dealerPhone,
-            mileage: data.mileage || 0
+            dealerPhone: data.dealerPhone
         };
     }
 }

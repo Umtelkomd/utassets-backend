@@ -7,17 +7,13 @@ export class ItemRentalStrategy implements RentalStrategy {
         const days = rental.days || this.calculateDays(rental.startDate, rental.endDate);
         const baseCost = rental.dailyCost * days;
 
-        // Lógica específica para items (descuento por grupo)
-        const peopleCount = rental.metadata?.peopleCount || 1;
-        const groupDiscount = peopleCount > 5 ? 0.9 : 1;
-
-        return baseCost * groupDiscount;
+        // Cálculo simple para items sin descuentos por grupo
+        return baseCost;
     }
 
     validate(rental: Rental): ValidationResult {
         const validations: ValidationResult[] = [
-            this.validateDates(rental),
-            this.validatePeopleCount(rental)
+            this.validateDates(rental)
         ];
 
         const failedValidation = validations.find(v => !v.isValid);
@@ -25,24 +21,15 @@ export class ItemRentalStrategy implements RentalStrategy {
     }
 
     getRequiredFields(): string[] {
-        return ['inventoryId', 'startDate', 'endDate', 'days', 'dailyCost', 'peopleCount'];
+        return ['inventoryId', 'startDate', 'endDate', 'days', 'dailyCost'];
     }
 
     getSpecificFields(): Record<string, any> {
-        return {
-            peopleCount: {
-                type: 'number',
-                required: true,
-                min: 1,
-                description: 'Número de personas que usarán el item'
-            }
-        };
+        return {};
     }
 
     prepareMetadata(data: any): Record<string, any> {
-        return {
-            peopleCount: data.peopleCount ? parseInt(data.peopleCount, 10) : 1
-        };
+        return {};
     }
 
     private validateDates(rental: Rental): ValidationResult {
@@ -58,20 +45,6 @@ export class ItemRentalStrategy implements RentalStrategy {
             return {
                 isValid: false,
                 message: 'La fecha de inicio debe ser anterior a la fecha de fin',
-                status: 400
-            };
-        }
-
-        return { isValid: true };
-    }
-
-    private validatePeopleCount(rental: Rental): ValidationResult {
-        const peopleCount = rental.metadata?.peopleCount;
-
-        if (!peopleCount || peopleCount < 1) {
-            return {
-                isValid: false,
-                message: 'El número de personas debe ser mayor a 0',
                 status: 400
             };
         }

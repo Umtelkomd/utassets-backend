@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { UserController } from '../controllers/userController';
 import { upload, handleMulterError } from '../middlewares/uploadMiddleware';
-import { authMiddleware } from '../middlewares/authMiddleware';
+import { authMiddleware, isAdmin } from '../middlewares/authMiddleware';
+import { authController } from '../controllers/AuthController';
 
 const router = Router();
 const controller = new UserController();
@@ -15,10 +16,13 @@ router.use(authMiddleware);
 // Rutas que requieren autenticación
 router.get('/', controller.getUsers.bind(controller));
 router.get('/:id', controller.getUserById.bind(controller));
-router.put('/:id', controller.updateUser.bind(controller));
+router.put('/:id', upload.single('image'), handleMulterError, controller.updateUser.bind(controller));
 
 // Rutas específicas para imágenes
 router.put('/:id/image', upload.single('image'), handleMulterError, controller.updateUserImage.bind(controller));
 router.delete('/:id/image', controller.deleteUserImage.bind(controller));
+
+// Ruta para eliminar usuario (solo administradores)
+router.delete('/:id', isAdmin, authController.deleteUser.bind(authController));
 
 export default router; 

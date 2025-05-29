@@ -102,14 +102,14 @@ export class UserController {
 
             const user = await this.userRepository.findOne({ where: { id: parseInt(id) } });
             if (!user) {
-                if (file) {
+                if (file && file.path) {
                     fs.unlinkSync(file.path);
                 }
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
 
             // Procesar la imagen si existe
-            if (file) {
+            if (file && file.path) {
                 try {
                     // Eliminar imagen anterior de Cloudinary si existe
                     if (user.photoPublicId) {
@@ -122,7 +122,9 @@ export class UserController {
                     user.photoPublicId = uploadResult.public_id;
                 } catch (error) {
                     console.error('Error al procesar la imagen:', error);
-                    fs.unlinkSync(file.path);
+                    if (file && file.path) {
+                        fs.unlinkSync(file.path);
+                    }
                     return res.status(500).json({ message: 'Error al procesar la imagen del usuario' });
                 }
             }
@@ -137,7 +139,7 @@ export class UserController {
                 });
 
                 if (existingUser && existingUser.id !== parseInt(id)) {
-                    if (file) {
+                    if (file && file.path) {
                         fs.unlinkSync(file.path);
                     }
                     return res.status(400).json({ message: 'El usuario o email ya existe' });
@@ -155,7 +157,7 @@ export class UserController {
             await this.userRepository.save(user);
 
             // Eliminar archivo temporal si existe
-            if (file) {
+            if (file && file.path) {
                 fs.unlinkSync(file.path);
             }
 
@@ -164,7 +166,7 @@ export class UserController {
 
             return res.json(userWithoutPassword);
         } catch (error) {
-            if (req.file) {
+            if (req.file && req.file.path) {
                 fs.unlinkSync(req.file.path);
             }
             console.error('Error al actualizar usuario:', error);
@@ -183,7 +185,9 @@ export class UserController {
 
             const user = await this.userRepository.findOne({ where: { id: parseInt(id) } });
             if (!user) {
-                fs.unlinkSync(file.path);
+                if (file && file.path) {
+                    fs.unlinkSync(file.path);
+                }
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
 
@@ -202,7 +206,9 @@ export class UserController {
                 await this.userRepository.save(user);
 
                 // Eliminar archivo temporal
-                fs.unlinkSync(file.path);
+                if (file && file.path) {
+                    fs.unlinkSync(file.path);
+                }
 
                 return res.status(200).json({
                     message: 'Imagen actualizada correctamente',
@@ -212,14 +218,16 @@ export class UserController {
                     }
                 });
             } catch (uploadError) {
-                fs.unlinkSync(file.path);
+                if (file && file.path) {
+                    fs.unlinkSync(file.path);
+                }
                 return res.status(500).json({
                     message: 'Error al subir la imagen',
                     error: uploadError
                 });
             }
         } catch (error) {
-            if (req.file) {
+            if (req.file && req.file.path) {
                 fs.unlinkSync(req.file.path);
             }
             console.error('Error al actualizar imagen de usuario:', error);
