@@ -3,6 +3,7 @@ import { Vehicle } from './Vehicle';
 import { Inventory } from './Inventory';
 import { Report } from './Report';
 import { Comment } from './Comment';
+import { Vacation } from './Vacation';
 
 export enum UserRole {
     ADMIN = 'administrador',
@@ -75,4 +76,7 @@ export class User {
 
     @OneToMany(() => Comment, comment => comment.user)
     comments: Comment[];
+
+    @OneToMany(() => Vacation, vacation => vacation.user)
+    vacations: Vacation[];
 } 

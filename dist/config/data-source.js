@@ -19,6 +19,7 @@ const Report_1 = require("../entity/Report");
 const Comment_1 = require("../entity/Comment");
 const Rental_1 = require("../entity/Rental");
 const Housing_1 = require("../entity/Housing");
+const Vacation_1 = require("../entity/Vacation");
 const path_1 = __importDefault(require("path"));
 exports.AppDataSource = new typeorm_1.DataSource({
     type: "mysql",
@@ -42,7 +43,8 @@ exports.AppDataSource = new typeorm_1.DataSource({
         Report_1.Report,
         Comment_1.Comment,
         Rental_1.Rental,
-        Housing_1.Housing
+        Housing_1.Housing,
+        Vacation_1.Vacation
     ],
     migrations: [path_1.default.join(__dirname, '..', 'migration', '*.{ts,js}')],
     subscribers: [],

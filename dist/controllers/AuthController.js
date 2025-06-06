@@ -20,46 +20,31 @@ class AuthController {
         try {
             const { email, password } = req.body;
             const username = email;
-            console.log('Datos recibidos:', { email, password });
             // Validar que se proporcionaron las credenciales
             if (!email || !password) {
-                console.log('Faltan credenciales:', { email, password });
                 res.status(400).json({ message: 'Se requiere correo y contraseña' });
                 return;
             }
             // Buscar el usuario por nombre de usuario o email
-            console.log('Buscando usuario por username:', username);
             let user = await UserRepository_1.userRepository.getUserByUsername(username);
             if (!user) {
-                console.log('Usuario no encontrado por username, intentando por email:', username);
                 user = await UserRepository_1.userRepository.getUserByEmail(username);
             }
             if (!user) {
-                console.log('Usuario no encontrado ni por username ni por email');
                 res.status(401).json({ message: 'Credenciales inválidas' });
                 return;
             }
-            console.log('Usuario encontrado:', {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                isActive: user.isActive
-            });
             // Verificar si el usuario está activo
             if (!user.isActive) {
-                console.log('Usuario inactivo');
                 res.status(401).json({ message: 'Usuario desactivado. Contacte al administrador.' });
                 return;
             }
             // Verificar la contraseña
-            console.log('Verificando contraseña...');
             const isValidPassword = await UserRepository_1.userRepository.verifyPassword(user, password);
             if (!isValidPassword) {
-                console.log('Contraseña inválida');
                 res.status(401).json({ message: 'Credenciales inválidas' });
                 return;
             }
-            console.log('Contraseña válida, generando token...');
             // Actualizar último inicio de sesión
             const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
             await UserRepository_1.userRepository.updateLastLogin(user.id, ip === null || ip === void 0 ? void 0 : ip.toString());

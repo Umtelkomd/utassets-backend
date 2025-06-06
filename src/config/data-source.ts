@@ -13,6 +13,7 @@ import { Report } from '../entity/Report';
 import { Comment } from '../entity/Comment';
 import { Rental } from '../entity/Rental';
 import { Housing } from '../entity/Housing';
+import { Vacation } from '../entity/Vacation';
 import path from 'path';
 
 export const AppDataSource = new DataSource({
@@ -37,7 +38,8 @@ export const AppDataSource = new DataSource({
         Report,
         Comment,
         Rental,
-        Housing
+        Housing,
+        Vacation
     ],
     migrations: [path.join(__dirname, '..', 'migration', '*.{ts,js}')],
     subscribers: [],

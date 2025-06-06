@@ -15,6 +15,7 @@ import reportRoutes from './routes/ReportRoutes';
 import commentRoutes from './routes/CommentRoutes';
 import rentalRoutes from './routes/RentalRoutes';
 import housingRoutes from './routes/HousingRoutes';
+import vacationRoutes from './routes/VacationRoutes';
 import path from 'path';
 import './scripts/initDirectories';
 
@@ -55,6 +56,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/housing', housingRoutes);
+app.use('/api/vacations', vacationRoutes);
 
 // Inicializar la base de datos y el servidor
 AppDataSource.initialize()

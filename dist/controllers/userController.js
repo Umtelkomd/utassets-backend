@@ -119,6 +119,25 @@ class UserController {
             const { id } = req.params;
             const { username, email, fullName, phone, role, isActive } = req.body;
             const file = req.file;
+            // Debug logs para entender qué está llegando
+            console.log('Datos recibidos:', {
+                id,
+                username,
+                email,
+                fullName,
+                phone,
+                role,
+                isActive
+            });
+            console.log('Archivo recibido:', {
+                hasFile: !!file,
+                filename: file === null || file === void 0 ? void 0 : file.originalname,
+                mimetype: file === null || file === void 0 ? void 0 : file.mimetype,
+                size: file === null || file === void 0 ? void 0 : file.size,
+                hasBuffer: !!(file === null || file === void 0 ? void 0 : file.buffer),
+                hasPath: !!(file === null || file === void 0 ? void 0 : file.path),
+                fieldname: file === null || file === void 0 ? void 0 : file.fieldname
+            });
             const user = await this.userRepository.findOne({ where: { id: parseInt(id) } });
             if (!user) {
                 if (file && file.path) {
@@ -126,15 +145,19 @@ class UserController {
                 }
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
-            // Procesar la imagen si existe
-            if (file && file.path) {
+            // Procesar la imagen si existe - CORREGIDO: usar file.buffer en lugar de file.path
+            if (file && file.buffer) {
+                console.log('Procesando imagen...');
                 try {
                     // Eliminar imagen anterior de Cloudinary si existe
                     if (user.photoPublicId) {
+                        console.log('Eliminando imagen anterior:', user.photoPublicId);
                         await this.uploadService.deleteImage(user.photoPublicId);
                     }
                     // Subir nueva imagen
+                    console.log('Subiendo nueva imagen a Cloudinary...');
                     const uploadResult = await this.uploadService.uploadImage(file, 'users');
+                    console.log('Resultado de subida:', uploadResult);
                     user.photoUrl = uploadResult.url;
                     user.photoPublicId = uploadResult.public_id;
                 }
@@ -168,13 +191,15 @@ class UserController {
             user.phone = phone || user.phone;
             user.role = role || user.role;
             user.isActive = isActive !== undefined ? isActive : user.isActive;
+            console.log('Guardando usuario actualizado...');
             await this.userRepository.save(user);
-            // Eliminar archivo temporal si existe
+            // Eliminar archivo temporal si existe (aunque con memoryStorage no debería existir)
             if (file && file.path) {
                 fs_1.default.unlinkSync(file.path);
             }
             // Eliminar la contraseña del objeto de respuesta
             const { password: _, ...userWithoutPassword } = user;
+            console.log('Usuario actualizado exitosamente:', userWithoutPassword);
             return res.json(userWithoutPassword);
         }
         catch (error) {
@@ -189,6 +214,15 @@ class UserController {
         try {
             const { id } = req.params;
             const file = req.file;
+            console.log('updateUserImage - Datos recibidos:', {
+                id,
+                hasFile: !!file,
+                filename: file === null || file === void 0 ? void 0 : file.originalname,
+                mimetype: file === null || file === void 0 ? void 0 : file.mimetype,
+                size: file === null || file === void 0 ? void 0 : file.size,
+                hasBuffer: !!(file === null || file === void 0 ? void 0 : file.buffer),
+                hasPath: !!(file === null || file === void 0 ? void 0 : file.path)
+            });
             if (!file) {
                 return res.status(400).json({ message: 'No se ha subido ninguna imagen' });
             }
@@ -200,20 +234,24 @@ class UserController {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
             try {
+                console.log('updateUserImage - Subiendo nueva imagen a Cloudinary...');
                 // Subir nueva imagen a Cloudinary
                 const uploadResult = await this.uploadService.uploadImage(file, 'users');
+                console.log('updateUserImage - Resultado de subida:', uploadResult);
                 // Eliminar imagen anterior de Cloudinary si existe
                 if (user.photoPublicId) {
+                    console.log('updateUserImage - Eliminando imagen anterior:', user.photoPublicId);
                     await this.uploadService.deleteImage(user.photoPublicId);
                 }
                 // Actualizar con los nuevos datos
                 user.photoUrl = uploadResult.url;
                 user.photoPublicId = uploadResult.public_id;
                 await this.userRepository.save(user);
-                // Eliminar archivo temporal
+                // Eliminar archivo temporal si existe (aunque con memoryStorage no debería existir)
                 if (file && file.path) {
                     fs_1.default.unlinkSync(file.path);
                 }
+                console.log('updateUserImage - Imagen actualizada exitosamente');
                 return res.status(200).json({
                     message: 'Imagen actualizada correctamente',
                     user: {
@@ -223,6 +261,7 @@ class UserController {
                 });
             }
             catch (uploadError) {
+                console.error('updateUserImage - Error al subir imagen:', uploadError);
                 if (file && file.path) {
                     fs_1.default.unlinkSync(file.path);
                 }
@@ -236,7 +275,7 @@ class UserController {
             if (req.file && req.file.path) {
                 fs_1.default.unlinkSync(req.file.path);
             }
-            console.error('Error al actualizar imagen de usuario:', error);
+            console.error('updateUserImage - Error general:', error);
             return res.status(500).json({ message: 'Error al actualizar imagen de usuario' });
         }
     }

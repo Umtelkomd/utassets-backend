@@ -15,6 +15,7 @@ const Vehicle_1 = require("./Vehicle");
 const Inventory_1 = require("./Inventory");
 const Report_1 = require("./Report");
 const Comment_1 = require("./Comment");
+const Vacation_1 = require("./Vacation");
 var UserRole;
 (function (UserRole) {
     UserRole["ADMIN"] = "administrador";
@@ -103,6 +104,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => Comment_1.Comment, comment => comment.user),
     __metadata("design:type", Array)
 ], User.prototype, "comments", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => Vacation_1.Vacation, vacation => vacation.user),
+    __metadata("design:type", Array)
+], User.prototype, "vacations", void 0);
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)()
 ], User);
