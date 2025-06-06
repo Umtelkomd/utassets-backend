@@ -10,7 +10,7 @@ const User_1 = require("../entity/User");
 const upload_service_1 = require("../upload/upload.service");
 const config_1 = require("@nestjs/config");
 const JWT_SECRET = process.env.JWT_SECRET || 'utassets_secret_key_2024_secure_token';
-const JWT_EXPIRES_IN = '24h';
+const JWT_EXPIRES_IN = '90d';
 class AuthController {
     constructor() {
         const configService = new config_1.ConfigService();

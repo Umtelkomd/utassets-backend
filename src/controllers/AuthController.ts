@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { UserCreateDTO } from '../repositories/UserRepository';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'utassets_secret_key_2024_secure_token';
-const JWT_EXPIRES_IN = '24h';
+const JWT_EXPIRES_IN = '90d';
 
 export class AuthController {
     private uploadService: UploadService;
