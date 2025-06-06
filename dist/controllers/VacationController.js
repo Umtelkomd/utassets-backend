@@ -127,11 +127,11 @@ class VacationController {
             return res.status(500).json({ message: 'Error al obtener días disponibles' });
         }
     }
-    // Crear una nueva solicitud de vacación
+    // Crear una nueva solicitud de vacación (una o múltiples fechas)
     async createVacation(req, res) {
         var _a;
         try {
-            const { userId, date, type, description } = req.body;
+            const { userId, date, endDate, type, description } = req.body;
             const currentUserId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             // Validar campos requeridos
             if (!userId || !date || !type) {
@@ -150,35 +150,60 @@ class VacationController {
             if (!user) {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
-            // Verificar si ya existe una vacación para esa fecha y usuario
-            const existingVacation = await this.vacationRepository.findOne({
-                where: {
-                    userId: parseInt(userId),
-                    date: new Date(date)
-                }
-            });
-            if (existingVacation) {
+            // Determinar el rango de fechas
+            const startDate = new Date(date);
+            const finalEndDate = endDate ? new Date(endDate) : startDate;
+            // Validar que la fecha de fin no sea anterior a la de inicio
+            if (finalEndDate < startDate) {
                 return res.status(400).json({
-                    message: 'Ya existe una solicitud de vacación para esta fecha'
+                    message: 'La fecha de fin no puede ser anterior a la fecha de inicio'
                 });
             }
-            // Crear la vacación
-            const vacation = this.vacationRepository.create({
+            // Generar array de fechas en el rango
+            const dates = [];
+            const currentDate = new Date(startDate);
+            while (currentDate <= finalEndDate) {
+                dates.push(new Date(currentDate));
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            // Verificar si ya existen vacaciones para alguna de las fechas
+            const existingVacations = await this.vacationRepository.find({
+                where: {
+                    userId: parseInt(userId),
+                    date: (0, typeorm_1.In)(dates)
+                }
+            });
+            if (existingVacations.length > 0) {
+                const existingDates = existingVacations.map(v => new Date(v.date).toLocaleDateString('es-ES'));
+                return res.status(400).json({
+                    message: `Ya existen solicitudes de vacación para las siguientes fechas: ${existingDates.join(', ')}`
+                });
+            }
+            // Crear las vacaciones para todas las fechas del rango
+            const vacationsToCreate = dates.map(dateItem => this.vacationRepository.create({
                 userId: parseInt(userId),
-                date: new Date(date),
+                date: dateItem,
                 type,
                 description,
-                isApproved: true, // Los administradores pueden aprobar automáticamente
+                isApproved: true,
                 approvedDate: new Date(),
                 approvedBy: { id: currentUserId }
+            }));
+            await this.vacationRepository.save(vacationsToCreate);
+            // Obtener las vacaciones creadas con las relaciones
+            const savedVacations = await this.vacationRepository.find({
+                where: {
+                    userId: parseInt(userId),
+                    date: (0, typeorm_1.In)(dates)
+                },
+                relations: ['user', 'approvedBy'],
+                order: { date: 'ASC' }
             });
-            await this.vacationRepository.save(vacation);
-            // Obtener la vacación con las relaciones
-            const savedVacation = await this.vacationRepository.findOne({
-                where: { id: vacation.id },
-                relations: ['user', 'approvedBy']
+            return res.status(201).json({
+                message: `Se crearon ${dates.length} día(s) de vacación correctamente`,
+                vacations: savedVacations,
+                count: dates.length
             });
-            return res.status(201).json(savedVacation);
         }
         catch (error) {
             console.error('Error al crear vacación:', error);
