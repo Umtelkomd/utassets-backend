@@ -20,10 +20,31 @@ import rentalRoutes from './routes/RentalRoutes';
 import housingRoutes from './routes/HousingRoutes';
 import vacationRoutes from './routes/VacationRoutes';
 import path from 'path';
-import './scripts/initDirectories';
+import fs from 'fs';
 
 const app = express();
 const PORT = process.env.PORT || 5050;
+
+// Crear directorios necesarios
+const createUploadDirectories = () => {
+    const dirs = [
+        path.join(__dirname, '..', 'uploads'),
+        path.join(__dirname, '..', 'uploads', 'users'),
+        path.join(__dirname, '..', 'uploads', 'vehicles'),
+        path.join(__dirname, '..', 'uploads', 'inventory'),
+        path.join(__dirname, '..', 'uploads', 'housing')
+    ];
+
+    dirs.forEach(dir => {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+            console.log(`✅ Directorio creado: ${dir}`);
+        }
+    });
+};
+
+// Crear directorios
+createUploadDirectories();
 
 app.use(cors({
     origin: [
