@@ -25,9 +25,27 @@ const RentalRoutes_1 = __importDefault(require("./routes/RentalRoutes"));
 const HousingRoutes_1 = __importDefault(require("./routes/HousingRoutes"));
 const VacationRoutes_1 = __importDefault(require("./routes/VacationRoutes"));
 const path_1 = __importDefault(require("path"));
-require("./scripts/initDirectories");
+const fs_1 = __importDefault(require("fs"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5050;
+// Crear directorios necesarios
+const createUploadDirectories = () => {
+    const dirs = [
+        path_1.default.join(__dirname, '..', 'uploads'),
+        path_1.default.join(__dirname, '..', 'uploads', 'users'),
+        path_1.default.join(__dirname, '..', 'uploads', 'vehicles'),
+        path_1.default.join(__dirname, '..', 'uploads', 'inventory'),
+        path_1.default.join(__dirname, '..', 'uploads', 'housing')
+    ];
+    dirs.forEach(dir => {
+        if (!fs_1.default.existsSync(dir)) {
+            fs_1.default.mkdirSync(dir, { recursive: true });
+            console.log(`✅ Directorio creado: ${dir}`);
+        }
+    });
+};
+// Crear directorios
+createUploadDirectories();
 app.use((0, cors_1.default)({
     origin: [
         'https://glassfaser-utk.de',
