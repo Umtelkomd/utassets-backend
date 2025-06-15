@@ -26,6 +26,10 @@ class CommentController {
         try {
             const { id } = req.params;
             const { content } = req.body;
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
             const comment = await commentRepository.findOne({
                 where: { id: Number(id) },
                 relations: ['user']
@@ -34,7 +38,7 @@ class CommentController {
                 return res.status(404).json({ message: 'Comment not found' });
             }
             // Check if user is the owner or admin
-            if (comment.user.id !== req.user.id && req.user.role !== User_1.UserRole.ADMIN) {
+            if (comment.user.id !== req.userId && req.userRole !== User_1.UserRole.ADMIN) {
                 return res.status(403).json({ message: 'Not authorized to update this comment' });
             }
             comment.content = content;
@@ -49,6 +53,10 @@ class CommentController {
     async delete(req, res) {
         try {
             const { id } = req.params;
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
             const comment = await commentRepository.findOne({
                 where: { id: Number(id) },
                 relations: ['user']
@@ -57,7 +65,7 @@ class CommentController {
                 return res.status(404).json({ message: 'Comment not found' });
             }
             // Check if user is the owner or admin
-            if (comment.user.id !== req.user.id && req.user.role !== User_1.UserRole.ADMIN) {
+            if (comment.user.id !== req.userId && req.userRole !== User_1.UserRole.ADMIN) {
                 return res.status(403).json({ message: 'Not authorized to delete this comment' });
             }
             await commentRepository.remove(comment);

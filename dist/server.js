@@ -6,6 +6,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
+const express_session_1 = __importDefault(require("express-session"));
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
+const passport_1 = __importDefault(require("./config/passport"));
 const data_source_1 = require("./config/data-source");
 const AuthRoutes_1 = __importDefault(require("./routes/AuthRoutes"));
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
@@ -32,10 +35,25 @@ app.use((0, cors_1.default)({
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: false
+    credentials: true // Habilitar credentials para cookies
 }));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
+app.use((0, cookie_parser_1.default)());
+// Configurar sesión para Passport
+app.use((0, express_session_1.default)({
+    secret: process.env.SESSION_SECRET || 'utassets_session_secret_2024',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 horas
+    }
+}));
+// Inicializar Passport
+app.use(passport_1.default.initialize());
+app.use(passport_1.default.session());
 // Servir archivos estáticos
 app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '..', 'uploads')));
 app.use('/uploads/users', express_1.default.static(path_1.default.join(__dirname, '..', 'uploads', 'users')));

@@ -406,6 +406,38 @@ class AuthController {
             });
         }
     }
+    async googleCallback(req, res) {
+        try {
+            const user = req.user;
+            if (!user) {
+                res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/auth/callback?error=google_auth_failed`);
+                return;
+            }
+            // Generar token JWT
+            const token = jsonwebtoken_1.default.sign({
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role: user.role
+            }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+            // Establecer el token como cookie HTTP-only
+            res.cookie('authToken', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 90 * 24 * 60 * 60 * 1000 // 90 días
+            });
+            // Actualizar último inicio de sesión
+            const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+            await UserRepository_1.userRepository.updateLastLogin(user.id, ip === null || ip === void 0 ? void 0 : ip.toString());
+            // Redirigir al frontend con éxito (incluir basename /utassets)
+            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/auth/callback?google_auth=success`);
+        }
+        catch (error) {
+            console.error('Error en callback de Google:', error);
+            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/auth/callback?error=server_error`);
+        }
+    }
 }
 exports.AuthController = AuthController;
 exports.authController = new AuthController();

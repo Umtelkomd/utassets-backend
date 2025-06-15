@@ -20,6 +20,7 @@ export interface UserCreateDTO {
     birthDate?: Date;
     photoUrl?: string;
     photoPublicId?: string;
+    googleId?: string;
 }
 
 type UserUpdateDTO = DeepPartial<User>;

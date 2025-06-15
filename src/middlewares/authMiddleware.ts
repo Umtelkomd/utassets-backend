@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
-import { UserRole } from '../entity/User';
+import { UserRole, User } from '../entity/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'utassets_secret_key_2024_secure_token';
 
@@ -10,6 +10,7 @@ declare global {
         interface Request {
             userId?: number;
             userRole?: UserRole;
+            user?: User;
         }
     }
 }
@@ -17,7 +18,12 @@ declare global {
 // Middleware para verificar que el usuario esté autenticado
 export const authMiddleware: RequestHandler = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    let token = authHeader && authHeader.split(' ')[1];
+
+    // Si no hay token en el header, intentar obtenerlo de las cookies
+    if (!token) {
+        token = req.cookies?.authToken;
+    }
 
     if (!token) {
         return res.status(401).json({ message: 'Token no proporcionado' });
@@ -28,10 +34,17 @@ export const authMiddleware: RequestHandler = (req: Request, res: Response, next
             id: number;
             email: string;
             role: UserRole;
+            username?: string;
         };
 
         req.userId = decoded.id;
         req.userRole = decoded.role;
+        req.user = {
+            id: decoded.id,
+            role: decoded.role,
+            email: decoded.email,
+            username: decoded.username || decoded.email.split('@')[0]
+        } as User;
         next();
     } catch (error) {
         return res.status(403).json({ message: 'Token inválido o expirado' });

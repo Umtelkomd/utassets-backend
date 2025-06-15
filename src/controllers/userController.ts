@@ -19,7 +19,7 @@ export class UserController {
 
     async createUser(req: Request, res: Response): Promise<Response> {
         try {
-            const { username, email, password, fullName, role, birthDate } = req.body;
+            const { username, email, password, fullName, role, birthDate, phone } = req.body;
             const file = req.file;
 
             // Validar campos requeridos
@@ -63,6 +63,7 @@ export class UserController {
                 email,
                 password: hashedPassword,
                 fullName,
+                phone,
                 role: role || UserRole.TECH,
                 birthDate: birthDate ? new Date(birthDate) : undefined,
                 isActive: true,

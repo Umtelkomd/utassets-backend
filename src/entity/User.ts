@@ -59,6 +59,9 @@ export class User {
     @Column({ name: 'photo_public_id', type: 'varchar', nullable: true })
     photoPublicId: string | null;
 
+    @Column({ name: 'google_id', type: 'varchar', nullable: true, unique: true })
+    googleId?: string;
+
     @CreateDateColumn()
     createdAt: Date;
 

@@ -27,6 +27,11 @@ export class CommentController {
             const { id } = req.params;
             const { content } = req.body;
 
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+
             const comment = await commentRepository.findOne({
                 where: { id: Number(id) },
                 relations: ['user']
@@ -37,7 +42,7 @@ export class CommentController {
             }
 
             // Check if user is the owner or admin
-            if (comment.user.id !== req.user.id && req.user.role !== UserRole.ADMIN) {
+            if (comment.user.id !== req.userId && req.userRole !== UserRole.ADMIN) {
                 return res.status(403).json({ message: 'Not authorized to update this comment' });
             }
 
@@ -53,6 +58,12 @@ export class CommentController {
     async delete(req: Request, res: Response) {
         try {
             const { id } = req.params;
+
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+
             const comment = await commentRepository.findOne({
                 where: { id: Number(id) },
                 relations: ['user']
@@ -63,7 +74,7 @@ export class CommentController {
             }
 
             // Check if user is the owner or admin
-            if (comment.user.id !== req.user.id && req.user.role !== UserRole.ADMIN) {
+            if (comment.user.id !== req.userId && req.userRole !== UserRole.ADMIN) {
                 return res.status(403).json({ message: 'Not authorized to delete this comment' });
             }
 

@@ -81,6 +81,10 @@ __decorate([
     __metadata("design:type", Object)
 ], User.prototype, "photoPublicId", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'google_id', type: 'varchar', nullable: true, unique: true }),
+    __metadata("design:type", String)
+], User.prototype, "googleId", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], User.prototype, "createdAt", void 0);

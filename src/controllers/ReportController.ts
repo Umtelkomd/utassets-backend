@@ -12,7 +12,13 @@ export class ReportController {
     async create(req: Request, res: Response) {
         try {
             const { title, description, type } = req.body;
-            const userId = req.user.id;
+
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+
+            const userId = req.userId;
 
             const report = reportRepository.create({
                 title,
@@ -66,6 +72,11 @@ export class ReportController {
             const { id } = req.params;
             const { title, description, type, status } = req.body;
 
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+
             const report = await reportRepository.findOne({
                 where: { id: Number(id) },
                 relations: ['user']
@@ -76,7 +87,7 @@ export class ReportController {
             }
 
             // Check if user is the owner or admin
-            if (report.user.id !== req.user.id && req.user.role !== UserRole.ADMIN) {
+            if (report.user.id !== req.userId && req.userRole !== UserRole.ADMIN) {
                 return res.status(403).json({ message: 'Not authorized to update this report' });
             }
 
@@ -96,6 +107,12 @@ export class ReportController {
     async delete(req: Request, res: Response) {
         try {
             const { id } = req.params;
+
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+
             const report = await reportRepository.findOne({
                 where: { id: Number(id) },
                 relations: ['user']
@@ -106,7 +123,7 @@ export class ReportController {
             }
 
             // Check if user is the owner or admin
-            if (report.user.id !== req.user.id && req.user.role !== UserRole.ADMIN) {
+            if (report.user.id !== req.userId && req.userRole !== UserRole.ADMIN) {
                 return res.status(403).json({ message: 'Not authorized to delete this report' });
             }
 
@@ -122,7 +139,13 @@ export class ReportController {
         try {
             const { id } = req.params;
             const { content } = req.body;
-            const userId = req.user.id;
+
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+
+            const userId = req.userId;
 
             const report = await reportRepository.findOne({
                 where: { id: Number(id) }

@@ -9,8 +9,13 @@ const User_1 = require("../entity/User");
 const JWT_SECRET = process.env.JWT_SECRET || 'utassets_secret_key_2024_secure_token';
 // Middleware para verificar que el usuario esté autenticado
 const authMiddleware = (req, res, next) => {
+    var _a;
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    let token = authHeader && authHeader.split(' ')[1];
+    // Si no hay token en el header, intentar obtenerlo de las cookies
+    if (!token) {
+        token = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.authToken;
+    }
     if (!token) {
         return res.status(401).json({ message: 'Token no proporcionado' });
     }
@@ -18,6 +23,12 @@ const authMiddleware = (req, res, next) => {
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || '');
         req.userId = decoded.id;
         req.userRole = decoded.role;
+        req.user = {
+            id: decoded.id,
+            role: decoded.role,
+            email: decoded.email,
+            username: decoded.username || decoded.email.split('@')[0]
+        };
         next();
     }
     catch (error) {
