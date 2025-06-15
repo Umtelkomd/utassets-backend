@@ -29,7 +29,7 @@ router.post('/login', AuthController_1.authController.login.bind(AuthController_
 router.post('/register', uploadMiddleware_1.upload.single('image'), AuthController_1.authController.register.bind(AuthController_1.authController));
 // Rutas de Google OAuth (con verificación de configuración)
 router.get('/google', checkGoogleOAuthConfig, passport_1.default.authenticate('google', { scope: ['profile', 'email'] }));
-router.get('/google/callback', checkGoogleOAuthConfig, passport_1.default.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?error=google_auth_failed` }), AuthController_1.authController.googleCallback.bind(AuthController_1.authController));
+router.get('/google/callback', checkGoogleOAuthConfig, passport_1.default.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/login?error=google_auth_failed` }), AuthController_1.authController.googleCallback.bind(AuthController_1.authController));
 // Rutas protegidas que requieren autenticación
 router.get('/me', authMiddleware_1.authMiddleware, AuthController_1.authController.getCurrentUser.bind(AuthController_1.authController));
 router.post('/change-password', authMiddleware_1.authMiddleware, AuthController_1.authController.changePassword.bind(AuthController_1.authController));

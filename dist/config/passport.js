@@ -10,17 +10,11 @@ const User_1 = require("../entity/User");
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5050';
-// Validar que las variables de entorno estén configuradas
-if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'your_google_client_id_here') {
-    console.error('❌ ERROR: GOOGLE_CLIENT_ID no está configurado en las variables de entorno.');
-    console.error('🔧 Por favor, configura GOOGLE_CLIENT_ID en tu archivo .env');
-    console.error('📖 Consulta GOOGLE_OAUTH_CONFIG.md para más información');
-}
-if (!GOOGLE_CLIENT_SECRET || GOOGLE_CLIENT_SECRET === 'your_google_client_secret_here') {
-    console.error('❌ ERROR: GOOGLE_CLIENT_SECRET no está configurado en las variables de entorno.');
-    console.error('🔧 Por favor, configura GOOGLE_CLIENT_SECRET en tu archivo .env');
-    console.error('📖 Consulta GOOGLE_OAUTH_CONFIG.md para más información');
-}
+// Log de configuración para debug
+console.log('🔧 Configuración OAuth:');
+console.log('- BACKEND_URL:', BACKEND_URL);
+console.log('- Callback URL será:', `${BACKEND_URL}/api/auth/google/callback`);
+console.log('- NODE_ENV:', process.env.NODE_ENV);
 // Solo configurar la estrategia si las credenciales están presentes
 if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET &&
     GOOGLE_CLIENT_ID !== 'your_google_client_id_here' &&
