@@ -470,7 +470,7 @@ export class AuthController {
             const user = req.user as any;
 
             if (!user) {
-                res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/login?error=google_auth_failed`);
+                res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=google_auth_failed`);
                 return;
             }
 
@@ -499,10 +499,10 @@ export class AuthController {
             await userRepository.updateLastLogin(user.id, ip?.toString());
 
             // Redirigir al frontend con éxito
-            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/login?google_auth=success`);
+            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?google_auth=success`);
         } catch (error) {
             console.error('Error en callback de Google:', error);
-            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/login?error=server_error`);
+            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=server_error`);
         }
     }
 }

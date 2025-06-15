@@ -37,7 +37,7 @@ router.get('/google',
 
 router.get('/google/callback',
     checkGoogleOAuthConfig,
-    passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/login?error=google_auth_failed` }),
+    passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=google_auth_failed` }),
     authController.googleCallback.bind(authController)
 );
 

@@ -410,7 +410,7 @@ class AuthController {
         try {
             const user = req.user;
             if (!user) {
-                res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/login?error=google_auth_failed`);
+                res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=google_auth_failed`);
                 return;
             }
             // Generar token JWT
@@ -431,11 +431,11 @@ class AuthController {
             const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
             await UserRepository_1.userRepository.updateLastLogin(user.id, ip === null || ip === void 0 ? void 0 : ip.toString());
             // Redirigir al frontend con éxito
-            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/login?google_auth=success`);
+            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?google_auth=success`);
         }
         catch (error) {
             console.error('Error en callback de Google:', error);
-            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/utassets/login?error=server_error`);
+            res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=server_error`);
         }
     }
 }
