@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Vacation = exports.VacationType = void 0;
+exports.Vacation = exports.VacationStatus = exports.VacationType = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 var VacationType;
@@ -17,6 +17,13 @@ var VacationType;
     VacationType["REST_DAY"] = "rest_day";
     VacationType["EXTRA_WORK_DAY"] = "extra_work_day";
 })(VacationType || (exports.VacationType = VacationType = {}));
+var VacationStatus;
+(function (VacationStatus) {
+    VacationStatus["PENDING"] = "pending";
+    VacationStatus["FIRST_APPROVED"] = "first_approved";
+    VacationStatus["FULLY_APPROVED"] = "fully_approved";
+    VacationStatus["REJECTED"] = "rejected"; // Rechazada
+})(VacationStatus || (exports.VacationStatus = VacationStatus = {}));
 let Vacation = class Vacation {
 };
 exports.Vacation = Vacation;
@@ -49,9 +56,35 @@ __decorate([
     __metadata("design:type", String)
 ], Vacation.prototype, "description", void 0);
 __decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: VacationStatus,
+        default: VacationStatus.PENDING
+    }),
+    __metadata("design:type", String)
+], Vacation.prototype, "status", void 0);
+__decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], Vacation.prototype, "isApproved", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'first_approved_by' }),
+    __metadata("design:type", User_1.User)
+], Vacation.prototype, "firstApprovedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    __metadata("design:type", Date)
+], Vacation.prototype, "firstApprovedDate", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'second_approved_by' }),
+    __metadata("design:type", User_1.User)
+], Vacation.prototype, "secondApprovedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    __metadata("design:type", Date)
+], Vacation.prototype, "secondApprovedDate", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'date', nullable: true }),
     __metadata("design:type", Date)
@@ -61,6 +94,19 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'approved_by' }),
     __metadata("design:type", User_1.User)
 ], Vacation.prototype, "approvedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], Vacation.prototype, "rejectionReason", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'rejected_by' }),
+    __metadata("design:type", User_1.User)
+], Vacation.prototype, "rejectedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    __metadata("design:type", Date)
+], Vacation.prototype, "rejectedDate", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

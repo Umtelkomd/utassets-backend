@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import { Vacation, VacationType } from '../entity/Vacation';
+import { Vacation, VacationType, VacationStatus } from '../entity/Vacation';
 import { User } from '../entity/User';
 import { AppDataSource } from '../config/data-source';
 import { Between, In } from 'typeorm';
+import { slackNotificationService } from '../services/SlackNotificationService';
 
 export class VacationController {
     private vacationRepository = AppDataSource.getRepository(Vacation);
@@ -11,17 +12,25 @@ export class VacationController {
     // Obtener todas las vacaciones del año actual
     async getAllVacations(req: Request, res: Response): Promise<Response> {
         try {
-            const { year } = req.query;
+            const { year, onlyApproved } = req.query;
             const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
 
             const startDate = new Date(currentYear, 0, 1);
             const endDate = new Date(currentYear, 11, 31);
 
+            // Configurar filtros base
+            const whereConditions: any = {
+                date: Between(startDate, endDate)
+            };
+
+            // Si se solicita solo las aprobadas, filtrar por FULLY_APPROVED
+            if (onlyApproved === 'true') {
+                whereConditions.status = VacationStatus.FULLY_APPROVED;
+            }
+
             const vacations = await this.vacationRepository.find({
-                where: {
-                    date: Between(startDate, endDate)
-                },
-                relations: ['user', 'approvedBy'],
+                where: whereConditions,
+                relations: ['user', 'approvedBy', 'firstApprovedBy', 'secondApprovedBy', 'rejectedBy'],
                 order: {
                     date: 'ASC'
                 }
@@ -38,18 +47,26 @@ export class VacationController {
     async getUserVacations(req: Request, res: Response): Promise<Response> {
         try {
             const { userId } = req.params;
-            const { year } = req.query;
+            const { year, onlyApproved } = req.query;
             const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
 
             const startDate = new Date(currentYear, 0, 1);
             const endDate = new Date(currentYear, 11, 31);
 
+            // Configurar filtros base
+            const whereConditions: any = {
+                userId: parseInt(userId),
+                date: Between(startDate, endDate)
+            };
+
+            // Si se solicita solo las aprobadas, filtrar por FULLY_APPROVED
+            if (onlyApproved === 'true') {
+                whereConditions.status = VacationStatus.FULLY_APPROVED;
+            }
+
             const vacations = await this.vacationRepository.find({
-                where: {
-                    userId: parseInt(userId),
-                    date: Between(startDate, endDate)
-                },
-                relations: ['user', 'approvedBy'],
+                where: whereConditions,
+                relations: ['user', 'approvedBy', 'firstApprovedBy', 'secondApprovedBy', 'rejectedBy'],
                 order: {
                     date: 'ASC'
                 }
@@ -72,11 +89,12 @@ export class VacationController {
             const startDate = new Date(currentYear, 0, 1);
             const endDate = new Date(currentYear, 11, 31);
 
+            // Solo contar vacaciones completamente aprobadas
             const vacations = await this.vacationRepository.find({
                 where: {
                     userId: parseInt(userId),
                     date: Between(startDate, endDate),
-                    isApproved: true
+                    status: VacationStatus.FULLY_APPROVED
                 }
             });
 
@@ -114,11 +132,12 @@ export class VacationController {
 
             const usersWithDays = await Promise.all(
                 users.map(async (user) => {
+                    // Solo contar vacaciones completamente aprobadas
                     const vacations = await this.vacationRepository.find({
                         where: {
                             userId: user.id,
                             date: Between(startDate, endDate),
-                            isApproved: true
+                            status: VacationStatus.FULLY_APPROVED
                         }
                     });
 
@@ -213,8 +232,16 @@ export class VacationController {
                 });
             }
 
-            // Determinar si la solicitud debe ser automáticamente aprobada o quedar pendiente
-            const isAutoApproved = currentUserRole === 'administrador';
+            // Determinar el estado inicial según el rol del usuario
+            let initialStatus = VacationStatus.PENDING;
+            let isAutoApproved = false;
+
+            // Si es administrador creando para sí mismo, necesita doble aprobación también
+            // Solo las vacaciones de administradores se auto-aprueban completamente
+            if (currentUserRole === 'administrador' && currentUserId === parseInt(userId)) {
+                initialStatus = VacationStatus.FULLY_APPROVED;
+                isAutoApproved = true;
+            }
 
             // Crear las vacaciones para todas las fechas del rango
             const vacationsToCreate: Partial<Vacation>[] = [];
@@ -224,12 +251,19 @@ export class VacationController {
                     date: dateItem,
                     type,
                     description,
-                    isApproved: isAutoApproved,
-                    approvedDate: isAutoApproved ? new Date() : undefined
+                    status: initialStatus,
+                    isApproved: isAutoApproved
                 };
 
+                // Si es auto-aprobada, establecer las aprobaciones
                 if (isAutoApproved && currentUserId) {
-                    vacationData.approvedBy = { id: currentUserId } as User;
+                    const approver = { id: currentUserId } as User;
+                    vacationData.firstApprovedBy = approver;
+                    vacationData.firstApprovedDate = new Date();
+                    vacationData.secondApprovedBy = approver;
+                    vacationData.secondApprovedDate = new Date();
+                    vacationData.approvedBy = approver;
+                    vacationData.approvedDate = new Date();
                 }
 
                 vacationsToCreate.push(vacationData);
@@ -243,19 +277,34 @@ export class VacationController {
                     userId: parseInt(userId),
                     date: In(dates)
                 },
-                relations: ['user', 'approvedBy'],
+                relations: ['user', 'approvedBy', 'firstApprovedBy', 'secondApprovedBy'],
                 order: { date: 'ASC' }
             });
 
             const statusMessage = isAutoApproved
                 ? `Se crearon ${dates.length} día(s) de vacación correctamente`
-                : `Se enviaron ${dates.length} solicitud(es) de vacación. Esperando aprobación del administrador.`;
+                : `Se enviaron ${dates.length} solicitud(es) de vacación. Requiere aprobación de dos administradores.`;
+
+            // Enviar notificación de Slack solo para solicitudes nuevas (no auto-aprobadas)
+            if (!isAutoApproved) {
+                try {
+                    await slackNotificationService.sendVacationRequestNotification({
+                        user,
+                        dates,
+                        type,
+                        description
+                    });
+                } catch (error) {
+                    console.error('Error al enviar notificación de Slack:', error);
+                    // No afectar la respuesta aunque falle la notificación
+                }
+            }
 
             return res.status(201).json({
                 message: statusMessage,
                 vacations: savedVacations,
                 count: dates.length,
-                status: isAutoApproved ? 'approved' : 'pending'
+                status: initialStatus
             });
         } catch (error) {
             console.error('Error al crear vacación:', error);
@@ -331,7 +380,7 @@ export class VacationController {
                 where: {
                     date: new Date(date),
                     type: VacationType.REST_DAY,
-                    isApproved: true
+                    status: VacationStatus.FULLY_APPROVED
                 },
                 relations: ['user'],
                 select: {
@@ -366,7 +415,7 @@ export class VacationController {
             const vacations = await this.vacationRepository.find({
                 where: {
                     date: Between(new Date(startDate as string), new Date(endDate as string)),
-                    isApproved: true
+                    status: VacationStatus.FULLY_APPROVED
                 },
                 relations: ['user'],
                 order: {
@@ -390,25 +439,45 @@ export class VacationController {
             const startDate = new Date(currentYear, 0, 1);
             const endDate = new Date(currentYear, 11, 31);
 
+            // Obtener solicitudes pendientes
             const pendingVacations = await this.vacationRepository.find({
-                where: {
-                    date: Between(startDate, endDate),
-                    isApproved: false
-                },
-                relations: ['user'],
+                where: [
+                    {
+                        date: Between(startDate, endDate),
+                        status: VacationStatus.PENDING
+                    },
+                    {
+                        date: Between(startDate, endDate),
+                        status: VacationStatus.FIRST_APPROVED
+                    }
+                ],
+                relations: ['user', 'firstApprovedBy', 'secondApprovedBy'],
                 order: {
                     createdAt: 'DESC'
                 }
             });
 
-            return res.json(pendingVacations);
+            // Obtener todas las vacaciones aprobadas y pendientes para calcular conflictos
+            const allVacations = await this.vacationRepository.find({
+                where: {
+                    date: Between(startDate, endDate),
+                    status: In([VacationStatus.PENDING, VacationStatus.FIRST_APPROVED, VacationStatus.FULLY_APPROVED])
+                },
+                relations: ['user'],
+                select: ['id', 'date', 'type', 'status', 'userId', 'user']
+            });
+
+            return res.json({
+                pendingVacations,
+                allVacations
+            });
         } catch (error) {
             console.error('Error al obtener solicitudes pendientes:', error);
             return res.status(500).json({ message: 'Error al obtener solicitudes pendientes' });
         }
     }
 
-    // Aprobar una solicitud de vacación
+    // Aprobar una solicitud de vacación (sistema de doble aprobación)
     async approveVacation(req: Request, res: Response): Promise<Response> {
         try {
             const { id } = req.params;
@@ -421,36 +490,124 @@ export class VacationController {
             const currentUserId = req.userId;
             const currentUserRole = req.userRole;
 
+            // Solo administradores pueden aprobar
+            if (currentUserRole !== 'administrador') {
+                return res.status(403).json({ message: 'Solo los administradores pueden aprobar vacaciones' });
+            }
+
             const vacation = await this.vacationRepository.findOne({
                 where: { id: parseInt(id) },
-                relations: ['user']
+                relations: ['user', 'firstApprovedBy', 'secondApprovedBy']
             });
 
             if (!vacation) {
                 return res.status(404).json({ message: 'Solicitud de vacación no encontrada' });
             }
 
-            if (vacation.isApproved) {
-                return res.status(400).json({ message: 'La solicitud ya fue aprobada' });
+            if (vacation.status === VacationStatus.FULLY_APPROVED) {
+                return res.status(400).json({ message: 'La solicitud ya fue completamente aprobada' });
             }
 
-            vacation.isApproved = true;
-            vacation.approvedDate = new Date();
-            if (currentUserId) {
-                const approver = await this.userRepository.findOne({ where: { id: currentUserId } });
-                vacation.approvedBy = approver || undefined;
+            if (vacation.status === VacationStatus.REJECTED) {
+                return res.status(400).json({ message: 'No se puede aprobar una solicitud rechazada' });
+            }
+
+            const approver = await this.userRepository.findOne({ where: { id: currentUserId } });
+            if (!approver) {
+                return res.status(404).json({ message: 'Usuario aprobador no encontrado' });
+            }
+
+            let message = '';
+
+            if (vacation.status === VacationStatus.PENDING) {
+                // Primera aprobación
+                // Verificar que el usuario no se esté aprobando su propia solicitud
+                if (vacation.userId === currentUserId) {
+                    return res.status(400).json({
+                        message: 'No puedes aprobar tu propia solicitud de vacación'
+                    });
+                }
+
+                vacation.status = VacationStatus.FIRST_APPROVED;
+                vacation.firstApprovedBy = approver;
+                vacation.firstApprovedDate = new Date();
+                message = 'Primera aprobación registrada. Se requiere una segunda aprobación de otro administrador.';
+
+            } else if (vacation.status === VacationStatus.FIRST_APPROVED) {
+                // Segunda aprobación
+                // Verificar que no sea el mismo administrador que dio la primera aprobación
+                if (vacation.firstApprovedBy && vacation.firstApprovedBy.id === currentUserId) {
+                    return res.status(400).json({
+                        message: 'No puedes dar la segunda aprobación. Debe ser aprobada por un administrador diferente.'
+                    });
+                }
+
+                // Verificar que el usuario no se esté aprobando su propia solicitud
+                if (vacation.userId === currentUserId) {
+                    return res.status(400).json({
+                        message: 'No puedes aprobar tu propia solicitud de vacación'
+                    });
+                }
+
+                vacation.status = VacationStatus.FULLY_APPROVED;
+                vacation.secondApprovedBy = approver;
+                vacation.secondApprovedDate = new Date();
+                vacation.isApproved = true; // Para compatibilidad con el campo legacy
+                vacation.approvedBy = approver; // Último aprobador para compatibilidad
+                vacation.approvedDate = new Date();
+                message = 'Solicitud de vacación completamente aprobada. Las vacaciones han sido confirmadas.';
             }
 
             await this.vacationRepository.save(vacation);
 
             const updatedVacation = await this.vacationRepository.findOne({
                 where: { id: parseInt(id) },
-                relations: ['user', 'approvedBy']
+                relations: ['user', 'firstApprovedBy', 'secondApprovedBy', 'approvedBy']
             });
 
+            // Enviar notificación de Slack sobre la aprobación
+            if (updatedVacation) {
+                console.log('🔍 [DEBUG] Preparando notificación de Slack para aprobación');
+                console.log('🔍 [DEBUG] updatedVacation:', {
+                    id: updatedVacation.id,
+                    userId: updatedVacation.userId,
+                    userFullName: updatedVacation.user?.fullName,
+                    userEmail: updatedVacation.user?.email,
+                    date: updatedVacation.date,
+                    type: updatedVacation.type,
+                    status: updatedVacation.status
+                });
+                console.log('🔍 [DEBUG] approver:', {
+                    id: approver.id,
+                    fullName: approver.fullName,
+                    email: approver.email
+                });
+
+                try {
+                    const isFullyApproved = vacation.status === VacationStatus.FULLY_APPROVED;
+                    console.log('🔍 [DEBUG] Llamando sendVacationApprovedNotification con isFullyApproved:', isFullyApproved);
+
+                    await slackNotificationService.sendVacationApprovedNotification(
+                        updatedVacation.user,
+                        [updatedVacation.date],
+                        updatedVacation.type,
+                        approver.fullName,
+                        isFullyApproved
+                    );
+
+                    console.log('✅ [DEBUG] Notificación de Slack enviada exitosamente');
+                } catch (error) {
+                    console.error('❌ [DEBUG] Error al enviar notificación de aprobación de Slack:', error);
+                }
+            } else {
+                console.error('❌ [DEBUG] updatedVacation es null/undefined, no se puede enviar notificación');
+            }
+
             return res.json({
-                message: 'Solicitud de vacación aprobada correctamente',
-                vacation: updatedVacation
+                message,
+                vacation: updatedVacation,
+                status: vacation.status,
+                requiresSecondApproval: vacation.status === VacationStatus.FIRST_APPROVED
             });
         } catch (error) {
             console.error('Error al aprobar vacación:', error);
@@ -464,6 +621,19 @@ export class VacationController {
             const { id } = req.params;
             const { reason } = req.body;
 
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+
+            const currentUserId = req.userId;
+            const currentUserRole = req.userRole;
+
+            // Solo administradores pueden rechazar
+            if (currentUserRole !== 'administrador') {
+                return res.status(403).json({ message: 'Solo los administradores pueden rechazar vacaciones' });
+            }
+
             const vacation = await this.vacationRepository.findOne({
                 where: { id: parseInt(id) },
                 relations: ['user']
@@ -473,16 +643,42 @@ export class VacationController {
                 return res.status(404).json({ message: 'Solicitud de vacación no encontrada' });
             }
 
-            if (vacation.isApproved) {
-                return res.status(400).json({ message: 'No se puede rechazar una solicitud ya aprobada' });
+            if (vacation.status === VacationStatus.FULLY_APPROVED) {
+                return res.status(400).json({ message: 'No se puede rechazar una solicitud completamente aprobada' });
             }
 
-            // Eliminar la solicitud rechazada
-            await this.vacationRepository.remove(vacation);
+            if (vacation.status === VacationStatus.REJECTED) {
+                return res.status(400).json({ message: 'La solicitud ya fue rechazada' });
+            }
+
+            const rejector = await this.userRepository.findOne({ where: { id: currentUserId } });
+
+            // Marcar como rechazada en lugar de eliminar
+            vacation.status = VacationStatus.REJECTED;
+            vacation.rejectionReason = reason;
+            vacation.rejectedBy = rejector || undefined;
+            vacation.rejectedDate = new Date();
+
+            await this.vacationRepository.save(vacation);
+
+            // Enviar notificación de Slack sobre el rechazo
+            try {
+                await slackNotificationService.sendVacationRejectedNotification(
+                    vacation.user,
+                    [vacation.date],
+                    vacation.type,
+                    rejector?.fullName || 'Administrador',
+                    reason
+                );
+            } catch (error) {
+                console.error('Error al enviar notificación de rechazo de Slack:', error);
+            }
 
             return res.json({
-                message: 'Solicitud de vacación rechazada y eliminada',
-                reason: reason
+                message: 'Solicitud de vacación rechazada correctamente',
+                reason: reason,
+                rejectedBy: rejector?.fullName,
+                rejectedDate: vacation.rejectedDate
             });
         } catch (error) {
             console.error('Error al rechazar vacación:', error);
@@ -490,7 +686,7 @@ export class VacationController {
         }
     }
 
-    // Aprobar múltiples solicitudes de vacación
+    // Aprobar múltiples solicitudes de vacación (NOTA: Con doble aprobación, esto no es recomendable)
     async approveBulkVacations(req: Request, res: Response): Promise<Response> {
         try {
             const { vacationIds } = req.body;
@@ -501,6 +697,12 @@ export class VacationController {
             }
 
             const currentUserId = req.userId;
+            const currentUserRole = req.userRole;
+
+            // Solo administradores pueden aprobar
+            if (currentUserRole !== 'administrador') {
+                return res.status(403).json({ message: 'Solo los administradores pueden aprobar vacaciones' });
+            }
 
             if (!vacationIds || !Array.isArray(vacationIds) || vacationIds.length === 0) {
                 return res.status(400).json({
@@ -508,33 +710,147 @@ export class VacationController {
                 });
             }
 
-            // Buscar todas las vacaciones pendientes
+            // Buscar todas las vacaciones que pueden ser aprobadas
             const vacations = await this.vacationRepository.find({
-                where: {
-                    id: In(vacationIds.map(id => parseInt(id))),
-                    isApproved: false
-                },
-                relations: ['user']
+                where: [
+                    {
+                        id: In(vacationIds.map(id => parseInt(id))),
+                        status: VacationStatus.PENDING
+                    },
+                    {
+                        id: In(vacationIds.map(id => parseInt(id))),
+                        status: VacationStatus.FIRST_APPROVED
+                    }
+                ],
+                relations: ['user', 'firstApprovedBy']
             });
 
             if (vacations.length === 0) {
                 return res.status(404).json({
-                    message: 'No se encontraron solicitudes pendientes para aprobar'
+                    message: 'No se encontraron solicitudes válidas para aprobar'
                 });
             }
 
-            // Aprobar todas las vacaciones
+            const approver = await this.userRepository.findOne({ where: { id: currentUserId } });
+            if (!approver) {
+                return res.status(404).json({ message: 'Usuario aprobador no encontrado' });
+            }
+
+            let firstApprovals = 0;
+            let secondApprovals = 0;
+            let skipped = 0;
+
+            // Procesar cada vacación individualmente
             for (const vacation of vacations) {
-                vacation.isApproved = true;
-                vacation.approvedDate = new Date();
-                vacation.approvedBy = { id: currentUserId } as User;
+                // Verificar que el usuario no se esté aprobando su propia solicitud
+                if (vacation.userId === currentUserId) {
+                    skipped++;
+                    continue;
+                }
+
+                if (vacation.status === VacationStatus.PENDING) {
+                    // Primera aprobación
+                    vacation.status = VacationStatus.FIRST_APPROVED;
+                    vacation.firstApprovedBy = approver;
+                    vacation.firstApprovedDate = new Date();
+                    firstApprovals++;
+
+                } else if (vacation.status === VacationStatus.FIRST_APPROVED) {
+                    // Segunda aprobación - verificar que no sea el mismo aprobador
+                    if (vacation.firstApprovedBy && vacation.firstApprovedBy.id === currentUserId) {
+                        skipped++;
+                        continue;
+                    }
+
+                    vacation.status = VacationStatus.FULLY_APPROVED;
+                    vacation.secondApprovedBy = approver;
+                    vacation.secondApprovedDate = new Date();
+                    vacation.isApproved = true; // Para compatibilidad
+                    vacation.approvedBy = approver;
+                    vacation.approvedDate = new Date();
+                    secondApprovals++;
+                }
             }
 
             await this.vacationRepository.save(vacations);
 
+            // Agrupar vacaciones por usuario, tipo y estado para enviar notificaciones consolidadas
+            const groupedVacations = new Map<string, {
+                user: User;
+                dates: Date[];
+                type: VacationType;
+                isFullyApproved: boolean;
+            }>();
+
+            for (const vacation of vacations) {
+                if (vacation.userId === currentUserId) continue; // Saltar las que fueron omitidas
+
+                const key = `${vacation.userId}-${vacation.type}-${vacation.status}`;
+                const isFullyApproved = vacation.status === VacationStatus.FULLY_APPROVED;
+
+                if (groupedVacations.has(key)) {
+                    groupedVacations.get(key)!.dates.push(vacation.date);
+                } else {
+                    groupedVacations.set(key, {
+                        user: vacation.user,
+                        dates: [vacation.date],
+                        type: vacation.type,
+                        isFullyApproved
+                    });
+                }
+            }
+
+            // Enviar una notificación por cada grupo (usuario/tipo/estado)
+            for (const group of groupedVacations.values()) {
+                try {
+                    console.log('🔍 [DEBUG] Procesando grupo para notificación masiva:', {
+                        userFullName: group.user.fullName,
+                        userEmail: group.user.email,
+                        datesCount: group.dates.length,
+                        type: group.type,
+                        isFullyApproved: group.isFullyApproved,
+                        approverName: approver.fullName
+                    });
+
+                    // Ordenar las fechas - convertir a Date si es necesario
+                    group.dates.sort((a, b) => {
+                        const dateA = a instanceof Date ? a : new Date(a);
+                        const dateB = b instanceof Date ? b : new Date(b);
+                        return dateA.getTime() - dateB.getTime();
+                    });
+
+                    console.log('🔍 [DEBUG] Enviando notificación de aprobación masiva...');
+                    await slackNotificationService.sendVacationApprovedNotification(
+                        group.user,
+                        group.dates,
+                        group.type,
+                        approver.fullName,
+                        group.isFullyApproved
+                    );
+                    console.log('✅ [DEBUG] Notificación masiva enviada exitosamente');
+                } catch (error) {
+                    console.error('❌ [DEBUG] Error al enviar notificación de aprobación masiva de Slack:', error);
+                }
+            }
+
+            let message = `Proceso completado: `;
+            if (firstApprovals > 0) {
+                message += `${firstApprovals} primera(s) aprobación(es), `;
+            }
+            if (secondApprovals > 0) {
+                message += `${secondApprovals} segunda(s) aprobación(es) (completadas), `;
+            }
+            if (skipped > 0) {
+                message += `${skipped} omitida(s) por restricciones, `;
+            }
+            message = message.slice(0, -2); // Remover la última coma
+
             return res.json({
-                message: `Se aprobaron ${vacations.length} solicitud(es) de vacación correctamente`,
-                approvedCount: vacations.length
+                message,
+                firstApprovals,
+                secondApprovals,
+                skipped,
+                totalProcessed: firstApprovals + secondApprovals + skipped
             });
         } catch (error) {
             console.error('Error al aprobar vacaciones múltiples:', error);
