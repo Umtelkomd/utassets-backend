@@ -68,6 +68,10 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Vacation.prototype, "isApproved", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'batch_id', nullable: true }),
+    __metadata("design:type", String)
+], Vacation.prototype, "batchId", void 0);
+__decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true }),
     (0, typeorm_1.JoinColumn)({ name: 'first_approved_by' }),
     __metadata("design:type", User_1.User)

@@ -22,6 +22,7 @@ router.get('/users', controller.getAllUsersAvailableDays.bind(controller));
 // Rutas para gestión de solicitudes pendientes
 router.get('/pending', controller.getPendingVacations.bind(controller));
 router.put('/:id/approve', controller.approveVacation.bind(controller));
+router.put('/approve/selected-days', controller.approveSelectedDaysFromRequest.bind(controller));
 router.delete('/:id/reject', controller.rejectVacation.bind(controller));
 router.put('/approve/bulk', controller.approveBulkVacations.bind(controller));
 router.delete('/:id', controller.deleteVacation.bind(controller));

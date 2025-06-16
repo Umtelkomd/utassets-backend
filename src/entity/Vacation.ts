@@ -47,6 +47,9 @@ export class Vacation {
     @Column({ default: false })
     isApproved: boolean;
 
+    @Column({ name: 'batch_id', nullable: true })
+    batchId?: string;
+
     @ManyToOne(() => User, { nullable: true })
     @JoinColumn({ name: 'first_approved_by' })
     firstApprovedBy?: User;
