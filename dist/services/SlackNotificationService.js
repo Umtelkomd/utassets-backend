@@ -13,6 +13,11 @@ class SlackNotificationService {
     }
     async sendVacationRequestNotification(data) {
         if (!slack_config_1.slackConfig.enabled) {
+            console.log('📴 Notificaciones de Slack deshabilitadas');
+            return;
+        }
+        if (!this.webhookUrl) {
+            console.warn('⚠️ SLACK_WEBHOOK_URL no está configurado. Las notificaciones de Slack están deshabilitadas.');
             return;
         }
         try {
@@ -84,6 +89,23 @@ class SlackNotificationService {
         }
         catch (error) {
             console.error('❌ Error al enviar notificación de Slack:', error);
+            // Logging más detallado para debugging
+            if (error.response) {
+                console.error('❌ Slack webhook error - Status:', error.response.status);
+                console.error('❌ Slack webhook error - Data:', error.response.data);
+                if (error.response.status === 403) {
+                    console.error('🔐 El webhook de Slack parece ser inválido o haber expirado. Verifica SLACK_WEBHOOK_URL');
+                }
+                else if (error.response.status === 404) {
+                    console.error('🔍 El endpoint del webhook no fue encontrado. Verifica la URL');
+                }
+            }
+            else if (error.request) {
+                console.error('❌ No se pudo conectar con Slack:', error.message);
+            }
+            else {
+                console.error('❌ Error configurando la petición:', error.message);
+            }
             // No lanzamos el error para que no afecte la creación de la vacación
         }
     }
@@ -135,10 +157,11 @@ class SlackNotificationService {
     }
     async sendVacationApprovedNotification(user, dates, type, approverName, isFullyApproved) {
         if (!slack_config_1.slackConfig.enabled) {
+            console.log('📴 Notificaciones de Slack deshabilitadas');
             return;
         }
         if (!this.webhookUrl) {
-            console.error('❌ webhookUrl no está configurado');
+            console.warn('⚠️ SLACK_WEBHOOK_URL no está configurado. Las notificaciones de Slack están deshabilitadas.');
             return;
         }
         try {
