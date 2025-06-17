@@ -19,20 +19,32 @@ export class VacationController {
             const endDate = new Date(currentYear, 11, 31);
 
             // Configurar filtros base
-            const whereConditions: any = {
-                date: Between(startDate, endDate)
-            };
+            const whereConditions: any = [
+                {
+                    startDate: Between(startDate, endDate)
+                },
+                {
+                    endDate: Between(startDate, endDate)
+                },
+                // También incluir rangos que abarcen el año completo
+                {
+                    startDate: Between(new Date(currentYear - 1, 11, 1), startDate),
+                    endDate: Between(endDate, new Date(currentYear + 1, 0, 31))
+                }
+            ];
 
-            // Si se solicita solo las aprobadas, filtrar por FULLY_APPROVED
+            // Si se solicita solo las aprobadas, agregar filtro de estado
             if (onlyApproved === 'true') {
-                whereConditions.status = VacationStatus.FULLY_APPROVED;
+                whereConditions.forEach((condition: any) => {
+                    condition.status = VacationStatus.FULLY_APPROVED;
+                });
             }
 
             const vacations = await this.vacationRepository.find({
                 where: whereConditions,
                 relations: ['user', 'approvedBy', 'firstApprovedBy', 'secondApprovedBy', 'rejectedBy'],
                 order: {
-                    date: 'ASC'
+                    startDate: 'ASC'
                 }
             });
 
@@ -54,21 +66,35 @@ export class VacationController {
             const endDate = new Date(currentYear, 11, 31);
 
             // Configurar filtros base
-            const whereConditions: any = {
-                userId: parseInt(userId),
-                date: Between(startDate, endDate)
-            };
+            const whereConditions: any = [
+                {
+                    userId: parseInt(userId),
+                    startDate: Between(startDate, endDate)
+                },
+                {
+                    userId: parseInt(userId),
+                    endDate: Between(startDate, endDate)
+                },
+                // También incluir rangos que abarcen el año completo
+                {
+                    userId: parseInt(userId),
+                    startDate: Between(new Date(currentYear - 1, 11, 1), startDate),
+                    endDate: Between(endDate, new Date(currentYear + 1, 0, 31))
+                }
+            ];
 
-            // Si se solicita solo las aprobadas, filtrar por FULLY_APPROVED
+            // Si se solicita solo las aprobadas, agregar filtro de estado
             if (onlyApproved === 'true') {
-                whereConditions.status = VacationStatus.FULLY_APPROVED;
+                whereConditions.forEach((condition: any) => {
+                    condition.status = VacationStatus.FULLY_APPROVED;
+                });
             }
 
             const vacations = await this.vacationRepository.find({
                 where: whereConditions,
                 relations: ['user', 'approvedBy', 'firstApprovedBy', 'secondApprovedBy', 'rejectedBy'],
                 order: {
-                    date: 'ASC'
+                    startDate: 'ASC'
                 }
             });
 
@@ -90,16 +116,42 @@ export class VacationController {
             const endDate = new Date(currentYear, 11, 31);
 
             // Solo contar vacaciones completamente aprobadas
-            const vacations = await this.vacationRepository.find({
-                where: {
+            const whereConditions = [
+                {
                     userId: parseInt(userId),
-                    date: Between(startDate, endDate),
-                    status: VacationStatus.FULLY_APPROVED
+                    status: VacationStatus.FULLY_APPROVED,
+                    startDate: Between(startDate, endDate)
+                },
+                {
+                    userId: parseInt(userId),
+                    status: VacationStatus.FULLY_APPROVED,
+                    endDate: Between(startDate, endDate)
+                },
+                // También incluir rangos que abarcen el año completo
+                {
+                    userId: parseInt(userId),
+                    status: VacationStatus.FULLY_APPROVED,
+                    startDate: Between(new Date(currentYear - 1, 11, 1), startDate),
+                    endDate: Between(endDate, new Date(currentYear + 1, 0, 31))
                 }
+            ];
+
+            const vacations = await this.vacationRepository.find({
+                where: whereConditions
             });
 
-            const restDays = vacations.filter(v => v.type === VacationType.REST_DAY).length;
-            const extraWorkDays = vacations.filter(v => v.type === VacationType.EXTRA_WORK_DAY).length;
+            // Calcular días totales considerando los rangos
+            let restDays = 0;
+            let extraWorkDays = 0;
+
+            vacations.forEach(vacation => {
+                const dayCount = vacation.dayCount;
+                if (vacation.type === VacationType.REST_DAY) {
+                    restDays += dayCount;
+                } else {
+                    extraWorkDays += dayCount;
+                }
+            });
 
             const availableDays = 25 + extraWorkDays - restDays;
 
@@ -133,16 +185,43 @@ export class VacationController {
             const usersWithDays = await Promise.all(
                 users.map(async (user) => {
                     // Solo contar vacaciones completamente aprobadas
-                    const vacations = await this.vacationRepository.find({
-                        where: {
+                    const whereConditions = [
+                        {
                             userId: user.id,
-                            date: Between(startDate, endDate),
-                            status: VacationStatus.FULLY_APPROVED
+                            status: VacationStatus.FULLY_APPROVED,
+                            startDate: Between(startDate, endDate)
+                        },
+                        {
+                            userId: user.id,
+                            status: VacationStatus.FULLY_APPROVED,
+                            endDate: Between(startDate, endDate)
+                        },
+                        // También incluir rangos que abarcen el año completo
+                        {
+                            userId: user.id,
+                            status: VacationStatus.FULLY_APPROVED,
+                            startDate: Between(new Date(currentYear - 1, 11, 1), startDate),
+                            endDate: Between(endDate, new Date(currentYear + 1, 0, 31))
+                        }
+                    ];
+
+                    const vacations = await this.vacationRepository.find({
+                        where: whereConditions
+                    });
+
+                    // Calcular días totales considerando los rangos
+                    let restDays = 0;
+                    let extraWorkDays = 0;
+
+                    vacations.forEach(vacation => {
+                        const dayCount = vacation.dayCount;
+                        if (vacation.type === VacationType.REST_DAY) {
+                            restDays += dayCount;
+                        } else {
+                            extraWorkDays += dayCount;
                         }
                     });
 
-                    const restDays = vacations.filter(v => v.type === VacationType.REST_DAY).length;
-                    const extraWorkDays = vacations.filter(v => v.type === VacationType.EXTRA_WORK_DAY).length;
                     const availableDays = 25 + extraWorkDays - restDays;
 
                     return {
@@ -163,7 +242,7 @@ export class VacationController {
         }
     }
 
-    // Crear una nueva solicitud de vacación (una o múltiples fechas)
+    // Crear una nueva solicitud de vacación por rango
     async createVacation(req: Request, res: Response): Promise<Response> {
         try {
             const { userId, date, endDate, type, description } = req.body;
@@ -196,7 +275,7 @@ export class VacationController {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
 
-            // Determinar el rango de fechas
+            // Determinar fechas del rango
             const startDate = new Date(date);
             const finalEndDate = endDate ? new Date(endDate) : startDate;
 
@@ -207,28 +286,19 @@ export class VacationController {
                 });
             }
 
-            // Generar array de fechas en el rango
-            const dates = [];
-            const currentDate = new Date(startDate);
-            while (currentDate <= finalEndDate) {
-                dates.push(new Date(currentDate));
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
+            // Verificar si ya existen vacaciones que se solapen con este rango
+            const overlappingVacations = await this.vacationRepository
+                .createQueryBuilder('vacation')
+                .where('vacation.userId = :userId', { userId: parseInt(userId) })
+                .andWhere(
+                    '(vacation.startDate <= :endDate AND vacation.endDate >= :startDate)',
+                    { startDate, endDate: finalEndDate }
+                )
+                .getMany();
 
-            // Verificar si ya existen vacaciones para alguna de las fechas
-            const existingVacations = await this.vacationRepository.find({
-                where: {
-                    userId: parseInt(userId),
-                    date: In(dates)
-                }
-            });
-
-            if (existingVacations.length > 0) {
-                const existingDates = existingVacations.map(v =>
-                    new Date(v.date).toLocaleDateString('es-ES')
-                );
+            if (overlappingVacations.length > 0) {
                 return res.status(400).json({
-                    message: `Ya existen solicitudes de vacación para las siguientes fechas: ${existingDates.join(', ')}`
+                    message: `Ya existe una solicitud de vacación que se solapa con este rango de fechas`
                 });
             }
 
@@ -236,78 +306,66 @@ export class VacationController {
             let initialStatus = VacationStatus.PENDING;
             let isAutoApproved = false;
 
-            // Si es administrador creando para sí mismo, necesita doble aprobación también
-            // Solo las vacaciones de administradores se auto-aprueban completamente
+            // Si es administrador creando para sí mismo, auto-aprobar completamente
             if (currentUserRole === 'administrador' && currentUserId === parseInt(userId)) {
                 initialStatus = VacationStatus.FULLY_APPROVED;
                 isAutoApproved = true;
             }
 
-            // Generar un batchId único para agrupar solicitudes de múltiples días
-            const batchId = dates.length > 1 ? `${parseInt(userId)}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined;
+            // Crear la vacación
+            const vacationData: Partial<Vacation> = {
+                userId: parseInt(userId),
+                startDate,
+                endDate: finalEndDate,
+                type,
+                description,
+                status: initialStatus,
+                isApproved: isAutoApproved
+            };
 
-            // Crear las vacaciones para todas las fechas del rango
-            const vacationsToCreate: Partial<Vacation>[] = [];
-            for (const dateItem of dates) {
-                const vacationData: Partial<Vacation> = {
-                    userId: parseInt(userId),
-                    date: dateItem,
-                    type,
-                    description,
-                    status: initialStatus,
-                    isApproved: isAutoApproved,
-                    batchId
-                };
-
-                // Si es auto-aprobada, establecer las aprobaciones
-                if (isAutoApproved && currentUserId) {
-                    const approver = { id: currentUserId } as User;
-                    vacationData.firstApprovedBy = approver;
-                    vacationData.firstApprovedDate = new Date();
-                    vacationData.secondApprovedBy = approver;
-                    vacationData.secondApprovedDate = new Date();
-                    vacationData.approvedBy = approver;
-                    vacationData.approvedDate = new Date();
-                }
-
-                vacationsToCreate.push(vacationData);
+            // Si es auto-aprobada, establecer las aprobaciones
+            if (isAutoApproved && currentUserId) {
+                const approver = { id: currentUserId } as User;
+                vacationData.firstApprovedBy = approver;
+                vacationData.firstApprovedDate = new Date();
+                vacationData.secondApprovedBy = approver;
+                vacationData.secondApprovedDate = new Date();
+                vacationData.approvedBy = approver;
+                vacationData.approvedDate = new Date();
             }
 
-            await this.vacationRepository.save(vacationsToCreate);
+            const savedVacation = await this.vacationRepository.save(vacationData);
 
-            // Obtener las vacaciones creadas con las relaciones
-            const savedVacations = await this.vacationRepository.find({
-                where: {
-                    userId: parseInt(userId),
-                    date: In(dates)
-                },
-                relations: ['user', 'approvedBy', 'firstApprovedBy', 'secondApprovedBy'],
-                order: { date: 'ASC' }
+            // Obtener la vacación creada con las relaciones
+            const vacationWithRelations = await this.vacationRepository.findOne({
+                where: { id: savedVacation.id },
+                relations: ['user', 'approvedBy', 'firstApprovedBy', 'secondApprovedBy']
             });
 
+            const dayCount = vacationWithRelations?.dayCount || 1;
             const statusMessage = isAutoApproved
-                ? `Se crearon ${dates.length} día(s) de vacación correctamente`
-                : `Se enviaron ${dates.length} solicitud(es) de vacación. Requiere aprobación de dos administradores.`;
+                ? `Se creó la vacación de ${dayCount} día(s) correctamente`
+                : `Se envió la solicitud de vacación de ${dayCount} día(s). Requiere aprobación de dos administradores.`;
 
             // Enviar notificación de Slack solo para solicitudes nuevas (no auto-aprobadas)
-            if (!isAutoApproved) {
+            if (!isAutoApproved && vacationWithRelations) {
                 try {
+                    const allDates = vacationWithRelations.getAllDatesInRange();
                     await slackNotificationService.sendVacationRequestNotification({
                         user,
-                        dates,
+                        dates: allDates,
                         type,
                         description
                     });
                 } catch (error) {
                     console.error('Error al enviar notificación de Slack:', error);
-                    // No afectar la respuesta aunque falle la notificación
                 }
             }
 
             return res.status(201).json({
                 message: statusMessage,
-                vacations: savedVacations,
-                count: dates.length,
+                vacation: vacationWithRelations,
+                dayCount,
                 status: initialStatus
             });
         } catch (error) {
@@ -362,12 +420,16 @@ export class VacationController {
                 });
             }
 
+            // Calcular total de días eliminados
+            const totalDays = vacations.reduce((sum, vacation) => sum + vacation.dayCount, 0);
+
             // Eliminar todas las vacaciones
             await this.vacationRepository.remove(vacations);
 
             return res.json({
-                message: `Se eliminaron ${vacations.length} día(s) de vacación correctamente`,
-                deletedCount: vacations.length
+                message: `Se eliminaron ${vacations.length} solicitud(es) de vacación correspondientes a ${totalDays} día(s)`,
+                deletedCount: vacations.length,
+                deletedDays: totalDays
             });
         } catch (error) {
             console.error('Error al eliminar vacaciones múltiples:', error);
@@ -379,24 +441,23 @@ export class VacationController {
     async getDateConflicts(req: Request, res: Response): Promise<Response> {
         try {
             const { date } = req.params;
+            const checkDate = new Date(date);
 
-            const vacations = await this.vacationRepository.find({
-                where: {
-                    date: new Date(date),
-                    type: VacationType.REST_DAY,
-                    status: VacationStatus.FULLY_APPROVED
-                },
-                relations: ['user'],
-                select: {
-                    id: true,
-                    date: true,
-                    user: {
-                        id: true,
-                        fullName: true,
-                        photoUrl: true
-                    }
-                }
-            });
+            const vacations = await this.vacationRepository
+                .createQueryBuilder('vacation')
+                .leftJoinAndSelect('vacation.user', 'user')
+                .where('vacation.type = :type', { type: VacationType.REST_DAY })
+                .andWhere('vacation.status = :status', { status: VacationStatus.FULLY_APPROVED })
+                .andWhere('vacation.startDate <= :date AND vacation.endDate >= :date', { date: checkDate })
+                .select([
+                    'vacation.id',
+                    'vacation.startDate',
+                    'vacation.endDate',
+                    'user.id',
+                    'user.fullName',
+                    'user.photoUrl'
+                ])
+                .getMany();
 
             return res.json(vacations);
         } catch (error) {
@@ -416,16 +477,19 @@ export class VacationController {
                 });
             }
 
-            const vacations = await this.vacationRepository.find({
-                where: {
-                    date: Between(new Date(startDate as string), new Date(endDate as string)),
-                    status: VacationStatus.FULLY_APPROVED
-                },
-                relations: ['user'],
-                order: {
-                    date: 'ASC'
-                }
-            });
+            const rangeStart = new Date(startDate as string);
+            const rangeEnd = new Date(endDate as string);
+
+            const vacations = await this.vacationRepository
+                .createQueryBuilder('vacation')
+                .leftJoinAndSelect('vacation.user', 'user')
+                .where('vacation.status = :status', { status: VacationStatus.FULLY_APPROVED })
+                .andWhere(
+                    '(vacation.startDate <= :rangeEnd AND vacation.endDate >= :rangeStart)',
+                    { rangeStart, rangeEnd }
+                )
+                .orderBy('vacation.startDate', 'ASC')
+                .getMany();
 
             return res.json(vacations);
         } catch (error) {
@@ -434,7 +498,7 @@ export class VacationController {
         }
     }
 
-    // Obtener solicitudes de vacaciones pendientes (solo para administradores)
+    // Obtener solicitudes de vacaciones pendientes
     async getPendingVacations(req: Request, res: Response): Promise<Response> {
         try {
             const { year } = req.query;
@@ -447,85 +511,46 @@ export class VacationController {
             const pendingVacations = await this.vacationRepository.find({
                 where: [
                     {
-                        date: Between(startDate, endDate),
+                        startDate: Between(startDate, endDate),
                         status: VacationStatus.PENDING
                     },
                     {
-                        date: Between(startDate, endDate),
+                        startDate: Between(startDate, endDate),
+                        status: VacationStatus.FIRST_APPROVED
+                    },
+                    {
+                        endDate: Between(startDate, endDate),
+                        status: VacationStatus.PENDING
+                    },
+                    {
+                        endDate: Between(startDate, endDate),
                         status: VacationStatus.FIRST_APPROVED
                     }
                 ],
                 relations: ['user', 'firstApprovedBy', 'secondApprovedBy'],
                 order: {
-                    createdAt: 'DESC',
-                    date: 'ASC'
+                    createdAt: 'DESC'
                 }
             });
-
-            // Agrupar solicitudes por batchId (para solicitudes múltiples) o individualmente (para solicitudes individuales)
-            const groupedRequests = new Map<string, {
-                batchId: string | null;
-                user: any;
-                type: string;
-                description: string | undefined;
-                status: string;
-                dates: Date[];
-                vacations: any[];
-                createdAt: Date;
-                firstApprovedBy?: any;
-                secondApprovedBy?: any;
-                firstApprovedDate?: Date;
-                secondApprovedDate?: Date;
-            }>();
-
-            pendingVacations.forEach(vacation => {
-                // Usar batchId si existe, sino crear un ID único para cada solicitud individual
-                const groupKey = vacation.batchId || `single-${vacation.id}`;
-
-                if (groupedRequests.has(groupKey)) {
-                    // Agregar fecha a solicitud existente
-                    const group = groupedRequests.get(groupKey)!;
-                    group.dates.push(vacation.date);
-                    group.vacations.push(vacation);
-                    // Ordenar fechas
-                    group.dates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-                } else {
-                    // Crear nueva solicitud agrupada
-                    groupedRequests.set(groupKey, {
-                        batchId: vacation.batchId || null,
-                        user: vacation.user,
-                        type: vacation.type,
-                        description: vacation.description || undefined,
-                        status: vacation.status,
-                        dates: [vacation.date],
-                        vacations: [vacation],
-                        createdAt: vacation.createdAt,
-                        firstApprovedBy: vacation.firstApprovedBy,
-                        secondApprovedBy: vacation.secondApprovedBy,
-                        firstApprovedDate: vacation.firstApprovedDate,
-                        secondApprovedDate: vacation.secondApprovedDate,
-                    });
-                }
-            });
-
-            // Convertir el Map a array y ordenar por fecha de creación
-            const groupedRequestsArray = Array.from(groupedRequests.values()).sort((a, b) =>
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
 
             // Obtener todas las vacaciones aprobadas y pendientes para calcular conflictos
             const allVacations = await this.vacationRepository.find({
-                where: {
-                    date: Between(startDate, endDate),
-                    status: In([VacationStatus.PENDING, VacationStatus.FIRST_APPROVED, VacationStatus.FULLY_APPROVED])
-                },
+                where: [
+                    {
+                        startDate: Between(startDate, endDate),
+                        status: In([VacationStatus.PENDING, VacationStatus.FIRST_APPROVED, VacationStatus.FULLY_APPROVED])
+                    },
+                    {
+                        endDate: Between(startDate, endDate),
+                        status: In([VacationStatus.PENDING, VacationStatus.FIRST_APPROVED, VacationStatus.FULLY_APPROVED])
+                    }
+                ],
                 relations: ['user'],
-                select: ['id', 'date', 'type', 'status', 'userId', 'user']
+                select: ['id', 'startDate', 'endDate', 'type', 'status', 'userId', 'user']
             });
 
             return res.json({
-                pendingRequests: groupedRequestsArray,
-                pendingVacations, // Mantenemos esto para compatibilidad
+                pendingVacations,
                 allVacations
             });
         } catch (error) {
@@ -534,7 +559,201 @@ export class VacationController {
         }
     }
 
-    // Aprobar una solicitud de vacación (sistema de doble aprobación)
+    // Obtener solicitudes de vacaciones pendientes agrupadas
+    async getPendingVacationsGrouped(req: Request, res: Response): Promise<Response> {
+        try {
+            const { year } = req.query;
+            const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
+
+            const startDate = new Date(currentYear, 0, 1);
+            const endDate = new Date(currentYear, 11, 31);
+
+            const pendingVacations = await this.vacationRepository.find({
+                where: [
+                    {
+                        startDate: Between(startDate, endDate),
+                        status: VacationStatus.PENDING
+                    },
+                    {
+                        startDate: Between(startDate, endDate),
+                        status: VacationStatus.FIRST_APPROVED
+                    },
+                    {
+                        endDate: Between(startDate, endDate),
+                        status: VacationStatus.PENDING
+                    },
+                    {
+                        endDate: Between(startDate, endDate),
+                        status: VacationStatus.FIRST_APPROVED
+                    }
+                ],
+                relations: ['user', 'firstApprovedBy', 'secondApprovedBy'],
+                order: {
+                    userId: 'ASC',
+                    startDate: 'ASC'
+                }
+            });
+
+            const allVacations = await this.vacationRepository.find({
+                where: [
+                    {
+                        startDate: Between(startDate, endDate),
+                        status: In([VacationStatus.PENDING, VacationStatus.FIRST_APPROVED, VacationStatus.FULLY_APPROVED])
+                    },
+                    {
+                        endDate: Between(startDate, endDate),
+                        status: In([VacationStatus.PENDING, VacationStatus.FIRST_APPROVED, VacationStatus.FULLY_APPROVED])
+                    }
+                ],
+                relations: ['user'],
+                select: ['id', 'startDate', 'endDate', 'type', 'status', 'userId', 'user']
+            });
+
+            // Para rangos, cada vacación ya es un "período", así que no necesitamos agrupar
+            const groupedRequests = pendingVacations.map(vacation => ({
+                id: `vacation-${vacation.id}`,
+                vacationIds: [vacation.id],
+                user: vacation.user,
+                userId: vacation.userId,
+                startDate: vacation.startDate,
+                endDate: vacation.endDate,
+                type: vacation.type,
+                status: vacation.status,
+                description: vacation.description,
+                dayCount: vacation.dayCount,
+                firstApprovedBy: vacation.firstApprovedBy,
+                firstApprovedDate: vacation.firstApprovedDate,
+                secondApprovedBy: vacation.secondApprovedBy,
+                secondApprovedDate: vacation.secondApprovedDate,
+                createdAt: vacation.createdAt,
+                updatedAt: vacation.updatedAt,
+                vacations: [vacation]
+            }));
+
+            return res.json({
+                pendingRequests: groupedRequests,
+                allVacations
+            });
+        } catch (error) {
+            console.error('Error al obtener solicitudes pendientes agrupadas:', error);
+            return res.status(500).json({ message: 'Error al obtener solicitudes pendientes' });
+        }
+    }
+
+    // Aprobar un período completo de vacaciones
+    async approvePeriodVacations(req: Request, res: Response): Promise<Response> {
+        try {
+            const { vacationIds } = req.body;
+
+            if (!vacationIds || !Array.isArray(vacationIds) || vacationIds.length === 0) {
+                return res.status(400).json({
+                    message: 'Se requiere un array de IDs de vacaciones válido'
+                });
+            }
+
+            // Usar la función existente de aprobación masiva
+            return await this.approveBulkVacations(req, res);
+        } catch (error) {
+            console.error('Error al aprobar período de vacaciones:', error);
+            return res.status(500).json({ message: 'Error al aprobar período de vacaciones' });
+        }
+    }
+
+    // Rechazar un período completo de vacaciones
+    async rejectPeriodVacations(req: Request, res: Response): Promise<Response> {
+        try {
+            const { vacationIds, reason } = req.body;
+
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+
+            const currentUserId = req.userId;
+            const currentUserRole = req.userRole;
+
+            // Solo administradores pueden rechazar
+            if (currentUserRole !== 'administrador') {
+                return res.status(403).json({ message: 'Solo los administradores pueden rechazar vacaciones' });
+            }
+
+            if (!vacationIds || !Array.isArray(vacationIds) || vacationIds.length === 0) {
+                return res.status(400).json({
+                    message: 'Se requiere un array de IDs de vacaciones válido'
+                });
+            }
+
+            // Buscar todas las vacaciones del período
+            const vacations = await this.vacationRepository.find({
+                where: {
+                    id: In(vacationIds.map(id => parseInt(id)))
+                },
+                relations: ['user']
+            });
+
+            if (vacations.length !== vacationIds.length) {
+                return res.status(404).json({
+                    message: 'Algunas vacaciones del período no fueron encontradas'
+                });
+            }
+
+            const rejector = await this.userRepository.findOne({ where: { id: currentUserId } });
+
+            // Calcular total de días rechazados
+            const totalDays = vacations.reduce((sum, vacation) => sum + vacation.dayCount, 0);
+
+            // Marcar todas como rechazadas
+            for (const vacation of vacations) {
+                vacation.status = VacationStatus.REJECTED;
+                vacation.rejectionReason = reason;
+                vacation.rejectedBy = rejector || undefined;
+                vacation.rejectedDate = new Date();
+            }
+
+            await this.vacationRepository.save(vacations);
+
+            // Enviar notificaciones por cada vacación (pueden ser de usuarios diferentes)
+            const userVacations = new Map<number, Vacation[]>();
+            for (const vacation of vacations) {
+                if (!userVacations.has(vacation.userId)) {
+                    userVacations.set(vacation.userId, []);
+                }
+                userVacations.get(vacation.userId)!.push(vacation);
+            }
+
+            for (const [userId, userVacationList] of userVacations) {
+                try {
+                    const user = userVacationList[0].user;
+                    const allDates = userVacationList.flatMap(v => v.getAllDatesInRange());
+                    const type = userVacationList[0].type;
+
+                    await slackNotificationService.sendVacationRejectedNotification(
+                        user,
+                        allDates,
+                        type,
+                        rejector?.fullName || 'Administrador',
+                        reason
+                    );
+                } catch (error) {
+                    console.error('Error al enviar notificación de rechazo de Slack:', error);
+                }
+            }
+
+            return res.json({
+                message: `Se rechazaron ${vacations.length} solicitud(es) de vacación correspondientes a ${totalDays} día(s)`,
+                rejectedCount: vacations.length,
+                rejectedDays: totalDays,
+                reason: reason,
+                rejectedBy: rejector?.fullName,
+                rejectedDate: new Date()
+            });
+        } catch (error) {
+            console.error('Error al rechazar período de vacaciones:', error);
+            return res.status(500).json({ message: 'Error al rechazar período de vacaciones' });
+        }
+    }
+
+    // Aprobar una solicitud de vacación
     async approveVacation(req: Request, res: Response): Promise<Response> {
         try {
             const { id } = req.params;
@@ -609,10 +828,10 @@ export class VacationController {
                 vacation.status = VacationStatus.FULLY_APPROVED;
                 vacation.secondApprovedBy = approver;
                 vacation.secondApprovedDate = new Date();
-                vacation.isApproved = true; // Para compatibilidad con el campo legacy
-                vacation.approvedBy = approver; // Último aprobador para compatibilidad
+                vacation.isApproved = true;
+                vacation.approvedBy = approver;
                 vacation.approvedDate = new Date();
-                message = 'Solicitud de vacación completamente aprobada. Las vacaciones han sido confirmadas.';
+                message = `Solicitud de vacación completamente aprobada. ${vacation.dayCount} día(s) de vacaciones confirmados.`;
             }
 
             await this.vacationRepository.save(vacation);
@@ -624,46 +843,27 @@ export class VacationController {
 
             // Enviar notificación de Slack sobre la aprobación
             if (updatedVacation) {
-                console.log('🔍 [DEBUG] Preparando notificación de Slack para aprobación');
-                console.log('🔍 [DEBUG] updatedVacation:', {
-                    id: updatedVacation.id,
-                    userId: updatedVacation.userId,
-                    userFullName: updatedVacation.user?.fullName,
-                    userEmail: updatedVacation.user?.email,
-                    date: updatedVacation.date,
-                    type: updatedVacation.type,
-                    status: updatedVacation.status
-                });
-                console.log('🔍 [DEBUG] approver:', {
-                    id: approver.id,
-                    fullName: approver.fullName,
-                    email: approver.email
-                });
-
                 try {
                     const isFullyApproved = vacation.status === VacationStatus.FULLY_APPROVED;
-                    console.log('🔍 [DEBUG] Llamando sendVacationApprovedNotification con isFullyApproved:', isFullyApproved);
+                    const allDates = updatedVacation.getAllDatesInRange();
 
                     await slackNotificationService.sendVacationApprovedNotification(
                         updatedVacation.user,
-                        [updatedVacation.date],
+                        allDates,
                         updatedVacation.type,
                         approver.fullName,
                         isFullyApproved
                     );
-
-                    console.log('✅ [DEBUG] Notificación de Slack enviada exitosamente');
                 } catch (error) {
-                    console.error('❌ [DEBUG] Error al enviar notificación de aprobación de Slack:', error);
+                    console.error('Error al enviar notificación de aprobación de Slack:', error);
                 }
-            } else {
-                console.error('❌ [DEBUG] updatedVacation es null/undefined, no se puede enviar notificación');
             }
 
             return res.json({
                 message,
                 vacation: updatedVacation,
                 status: vacation.status,
+                dayCount: vacation.dayCount,
                 requiresSecondApproval: vacation.status === VacationStatus.FIRST_APPROVED
             });
         } catch (error) {
@@ -710,7 +910,7 @@ export class VacationController {
 
             const rejector = await this.userRepository.findOne({ where: { id: currentUserId } });
 
-            // Marcar como rechazada en lugar de eliminar
+            // Marcar como rechazada
             vacation.status = VacationStatus.REJECTED;
             vacation.rejectionReason = reason;
             vacation.rejectedBy = rejector || undefined;
@@ -720,9 +920,10 @@ export class VacationController {
 
             // Enviar notificación de Slack sobre el rechazo
             try {
+                const allDates = vacation.getAllDatesInRange();
                 await slackNotificationService.sendVacationRejectedNotification(
                     vacation.user,
-                    [vacation.date],
+                    allDates,
                     vacation.type,
                     rejector?.fullName || 'Administrador',
                     reason
@@ -732,7 +933,8 @@ export class VacationController {
             }
 
             return res.json({
-                message: 'Solicitud de vacación rechazada correctamente',
+                message: `Solicitud de vacación de ${vacation.dayCount} día(s) rechazada correctamente`,
+                dayCount: vacation.dayCount,
                 reason: reason,
                 rejectedBy: rejector?.fullName,
                 rejectedDate: vacation.rejectedDate
@@ -743,7 +945,7 @@ export class VacationController {
         }
     }
 
-    // Aprobar múltiples solicitudes de vacación (NOTA: Con doble aprobación, esto no es recomendable)
+    // Aprobar múltiples solicitudes de vacación
     async approveBulkVacations(req: Request, res: Response): Promise<Response> {
         try {
             const { vacationIds } = req.body;
@@ -796,178 +998,7 @@ export class VacationController {
             let firstApprovals = 0;
             let secondApprovals = 0;
             let skipped = 0;
-
-            // Procesar cada vacación individualmente
-            for (const vacation of vacations) {
-                // Verificar que el usuario no se esté aprobando su propia solicitud
-                if (vacation.userId === currentUserId) {
-                    skipped++;
-                    continue;
-                }
-
-                if (vacation.status === VacationStatus.PENDING) {
-                    // Primera aprobación
-                    vacation.status = VacationStatus.FIRST_APPROVED;
-                    vacation.firstApprovedBy = approver;
-                    vacation.firstApprovedDate = new Date();
-                    firstApprovals++;
-
-                } else if (vacation.status === VacationStatus.FIRST_APPROVED) {
-                    // Segunda aprobación - verificar que no sea el mismo aprobador
-                    if (vacation.firstApprovedBy && vacation.firstApprovedBy.id === currentUserId) {
-                        skipped++;
-                        continue;
-                    }
-
-                    vacation.status = VacationStatus.FULLY_APPROVED;
-                    vacation.secondApprovedBy = approver;
-                    vacation.secondApprovedDate = new Date();
-                    vacation.isApproved = true; // Para compatibilidad
-                    vacation.approvedBy = approver;
-                    vacation.approvedDate = new Date();
-                    secondApprovals++;
-                }
-            }
-
-            await this.vacationRepository.save(vacations);
-
-            // Agrupar vacaciones por usuario, tipo y estado para enviar notificaciones consolidadas
-            const groupedVacations = new Map<string, {
-                user: User;
-                dates: Date[];
-                type: VacationType;
-                isFullyApproved: boolean;
-            }>();
-
-            for (const vacation of vacations) {
-                if (vacation.userId === currentUserId) continue; // Saltar las que fueron omitidas
-
-                const key = `${vacation.userId}-${vacation.type}-${vacation.status}`;
-                const isFullyApproved = vacation.status === VacationStatus.FULLY_APPROVED;
-
-                if (groupedVacations.has(key)) {
-                    groupedVacations.get(key)!.dates.push(vacation.date);
-                } else {
-                    groupedVacations.set(key, {
-                        user: vacation.user,
-                        dates: [vacation.date],
-                        type: vacation.type,
-                        isFullyApproved
-                    });
-                }
-            }
-
-            // Enviar una notificación por cada grupo (usuario/tipo/estado)
-            for (const group of groupedVacations.values()) {
-                try {
-                    console.log('🔍 [DEBUG] Procesando grupo para notificación masiva:', {
-                        userFullName: group.user.fullName,
-                        userEmail: group.user.email,
-                        datesCount: group.dates.length,
-                        type: group.type,
-                        isFullyApproved: group.isFullyApproved,
-                        approverName: approver.fullName
-                    });
-
-                    // Ordenar las fechas - convertir a Date si es necesario
-                    group.dates.sort((a, b) => {
-                        const dateA = a instanceof Date ? a : new Date(a);
-                        const dateB = b instanceof Date ? b : new Date(b);
-                        return dateA.getTime() - dateB.getTime();
-                    });
-
-                    console.log('🔍 [DEBUG] Enviando notificación de aprobación masiva...');
-                    await slackNotificationService.sendVacationApprovedNotification(
-                        group.user,
-                        group.dates,
-                        group.type,
-                        approver.fullName,
-                        group.isFullyApproved
-                    );
-                    console.log('✅ [DEBUG] Notificación masiva enviada exitosamente');
-                } catch (error) {
-                    console.error('❌ [DEBUG] Error al enviar notificación de aprobación masiva de Slack:', error);
-                }
-            }
-
-            let message = `Proceso completado: `;
-            if (firstApprovals > 0) {
-                message += `${firstApprovals} primera(s) aprobación(es), `;
-            }
-            if (secondApprovals > 0) {
-                message += `${secondApprovals} segunda(s) aprobación(es) (completadas), `;
-            }
-            if (skipped > 0) {
-                message += `${skipped} omitida(s) por restricciones, `;
-            }
-            message = message.slice(0, -2); // Remover la última coma
-
-            return res.json({
-                message,
-                firstApprovals,
-                secondApprovals,
-                skipped,
-                totalProcessed: firstApprovals + secondApprovals + skipped
-            });
-        } catch (error) {
-            console.error('Error al aprobar vacaciones múltiples:', error);
-            return res.status(500).json({ message: 'Error al aprobar vacaciones múltiples' });
-        }
-    }
-
-    // Aprobar días específicos de una solicitud agrupada
-    async approveSelectedDaysFromRequest(req: Request, res: Response): Promise<Response> {
-        try {
-            const { vacationIds } = req.body;
-
-            // Verificar autenticación
-            if (!req.user || !req.userId) {
-                return res.status(401).json({ message: 'Usuario no autenticado' });
-            }
-
-            const currentUserId = req.userId;
-            const currentUserRole = req.userRole;
-
-            // Solo administradores pueden aprobar
-            if (currentUserRole !== 'administrador') {
-                return res.status(403).json({ message: 'Solo los administradores pueden aprobar vacaciones' });
-            }
-
-            if (!vacationIds || !Array.isArray(vacationIds) || vacationIds.length === 0) {
-                return res.status(400).json({
-                    message: 'Se requiere un array de IDs de vacaciones válido'
-                });
-            }
-
-            // Buscar las vacaciones específicas que se quieren aprobar
-            const vacations = await this.vacationRepository.find({
-                where: [
-                    {
-                        id: In(vacationIds.map(id => parseInt(id))),
-                        status: VacationStatus.PENDING
-                    },
-                    {
-                        id: In(vacationIds.map(id => parseInt(id))),
-                        status: VacationStatus.FIRST_APPROVED
-                    }
-                ],
-                relations: ['user', 'firstApprovedBy']
-            });
-
-            if (vacations.length === 0) {
-                return res.status(404).json({
-                    message: 'No se encontraron solicitudes válidas para aprobar'
-                });
-            }
-
-            const approver = await this.userRepository.findOne({ where: { id: currentUserId } });
-            if (!approver) {
-                return res.status(404).json({ message: 'Usuario aprobador no encontrado' });
-            }
-
-            let firstApprovals = 0;
-            let secondApprovals = 0;
-            let skipped = 0;
+            let totalDaysApproved = 0;
 
             // Procesar cada vacación individualmente
             for (const vacation of vacations) {
@@ -998,43 +1029,54 @@ export class VacationController {
                     vacation.approvedBy = approver;
                     vacation.approvedDate = new Date();
                     secondApprovals++;
+                    totalDaysApproved += vacation.dayCount;
                 }
             }
 
             await this.vacationRepository.save(vacations);
 
-            // Agrupar por usuario para notificaciones
-            const groupedByUser = new Map<number, { user: any; dates: Date[]; type: string; }>();
+            // Agrupar vacaciones por usuario y estado para enviar notificaciones consolidadas
+            const groupedVacations = new Map<string, {
+                user: User;
+                vacations: Vacation[];
+                type: VacationType;
+                isFullyApproved: boolean;
+            }>();
 
             for (const vacation of vacations) {
-                if (vacation.userId === currentUserId) continue;
+                if (vacation.userId === currentUserId) continue; // Saltar las omitidas
 
-                if (groupedByUser.has(vacation.userId)) {
-                    groupedByUser.get(vacation.userId)!.dates.push(vacation.date);
+                const key = `${vacation.userId}-${vacation.type}-${vacation.status}`;
+                const isFullyApproved = vacation.status === VacationStatus.FULLY_APPROVED;
+
+                if (groupedVacations.has(key)) {
+                    groupedVacations.get(key)!.vacations.push(vacation);
                 } else {
-                    groupedByUser.set(vacation.userId, {
+                    groupedVacations.set(key, {
                         user: vacation.user,
-                        dates: [vacation.date],
-                        type: vacation.type
+                        vacations: [vacation],
+                        type: vacation.type,
+                        isFullyApproved
                     });
                 }
             }
 
-            // Enviar notificaciones por usuario
-            for (const group of groupedByUser.values()) {
+            // Enviar una notificación por cada grupo
+            for (const group of groupedVacations.values()) {
                 try {
-                    group.dates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-                    const isFullyApproved = vacations.find(v => v.userId === group.user.id)?.status === VacationStatus.FULLY_APPROVED;
+                    const allDates = group.vacations.flatMap(v => v.getAllDatesInRange());
+                    // Ordenar las fechas
+                    allDates.sort((a, b) => a.getTime() - b.getTime());
 
                     await slackNotificationService.sendVacationApprovedNotification(
                         group.user,
-                        group.dates,
-                        group.type as VacationType,
+                        allDates,
+                        group.type,
                         approver.fullName,
-                        isFullyApproved || false
+                        group.isFullyApproved
                     );
                 } catch (error) {
-                    console.error('Error al enviar notificación de Slack:', error);
+                    console.error('Error al enviar notificación de aprobación masiva de Slack:', error);
                 }
             }
 
@@ -1043,7 +1085,7 @@ export class VacationController {
                 message += `${firstApprovals} primera(s) aprobación(es), `;
             }
             if (secondApprovals > 0) {
-                message += `${secondApprovals} segunda(s) aprobación(es) (completadas), `;
+                message += `${secondApprovals} segunda(s) aprobación(es) (${totalDaysApproved} días completados), `;
             }
             if (skipped > 0) {
                 message += `${skipped} omitida(s) por restricciones, `;
@@ -1054,12 +1096,13 @@ export class VacationController {
                 message,
                 firstApprovals,
                 secondApprovals,
+                totalDaysApproved,
                 skipped,
                 totalProcessed: firstApprovals + secondApprovals + skipped
             });
         } catch (error) {
-            console.error('Error al aprobar días seleccionados:', error);
-            return res.status(500).json({ message: 'Error al aprobar días seleccionados' });
+            console.error('Error al aprobar vacaciones múltiples:', error);
+            return res.status(500).json({ message: 'Error al aprobar vacaciones múltiples' });
         }
     }
 }

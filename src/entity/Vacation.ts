@@ -26,7 +26,10 @@ export class Vacation {
     userId: number;
 
     @Column({ type: 'date' })
-    date: Date;
+    startDate: Date;
+
+    @Column({ type: 'date' })
+    endDate: Date;
 
     @Column({
         type: 'enum',
@@ -46,9 +49,6 @@ export class Vacation {
 
     @Column({ default: false })
     isApproved: boolean;
-
-    @Column({ name: 'batch_id', nullable: true })
-    batchId?: string;
 
     @ManyToOne(() => User, { nullable: true })
     @JoinColumn({ name: 'first_approved_by' })
@@ -86,4 +86,40 @@ export class Vacation {
 
     @UpdateDateColumn()
     updatedAt: Date;
+
+    // Método auxiliar para calcular el número de días en el rango
+    get dayCount(): number {
+        const start = new Date(this.startDate);
+        const end = new Date(this.endDate);
+        const diffTime = end.getTime() - start.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    }
+
+    // Método auxiliar para verificar si una fecha está dentro del rango
+    containsDate(date: Date): boolean {
+        const checkDate = new Date(date);
+        const start = new Date(this.startDate);
+        const end = new Date(this.endDate);
+
+        // Normalizar horas para comparar solo fechas
+        checkDate.setHours(0, 0, 0, 0);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+
+        return checkDate >= start && checkDate <= end;
+    }
+
+    // Método auxiliar para obtener todas las fechas del rango
+    getAllDatesInRange(): Date[] {
+        const dates: Date[] = [];
+        const current = new Date(this.startDate);
+        const end = new Date(this.endDate);
+
+        while (current <= end) {
+            dates.push(new Date(current));
+            current.setDate(current.getDate() + 1);
+        }
+
+        return dates;
+    }
 } 

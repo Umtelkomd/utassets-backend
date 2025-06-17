@@ -25,6 +25,35 @@ var VacationStatus;
     VacationStatus["REJECTED"] = "rejected"; // Rechazada
 })(VacationStatus || (exports.VacationStatus = VacationStatus = {}));
 let Vacation = class Vacation {
+    // Método auxiliar para calcular el número de días en el rango
+    get dayCount() {
+        const start = new Date(this.startDate);
+        const end = new Date(this.endDate);
+        const diffTime = end.getTime() - start.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    }
+    // Método auxiliar para verificar si una fecha está dentro del rango
+    containsDate(date) {
+        const checkDate = new Date(date);
+        const start = new Date(this.startDate);
+        const end = new Date(this.endDate);
+        // Normalizar horas para comparar solo fechas
+        checkDate.setHours(0, 0, 0, 0);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        return checkDate >= start && checkDate <= end;
+    }
+    // Método auxiliar para obtener todas las fechas del rango
+    getAllDatesInRange() {
+        const dates = [];
+        const current = new Date(this.startDate);
+        const end = new Date(this.endDate);
+        while (current <= end) {
+            dates.push(new Date(current));
+            current.setDate(current.getDate() + 1);
+        }
+        return dates;
+    }
 };
 exports.Vacation = Vacation;
 __decorate([
@@ -43,7 +72,11 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({ type: 'date' }),
     __metadata("design:type", Date)
-], Vacation.prototype, "date", void 0);
+], Vacation.prototype, "startDate", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'date' }),
+    __metadata("design:type", Date)
+], Vacation.prototype, "endDate", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
@@ -67,10 +100,6 @@ __decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], Vacation.prototype, "isApproved", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'batch_id', nullable: true }),
-    __metadata("design:type", String)
-], Vacation.prototype, "batchId", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true }),
     (0, typeorm_1.JoinColumn)({ name: 'first_approved_by' }),
