@@ -24,6 +24,8 @@ const CommentRoutes_1 = __importDefault(require("./routes/CommentRoutes"));
 const RentalRoutes_1 = __importDefault(require("./routes/RentalRoutes"));
 const HousingRoutes_1 = __importDefault(require("./routes/HousingRoutes"));
 const VacationRoutes_1 = __importDefault(require("./routes/VacationRoutes"));
+const FinancingRoutes_1 = __importDefault(require("./routes/FinancingRoutes"));
+const PaymentRoutes_1 = __importDefault(require("./routes/PaymentRoutes"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const app = (0, express_1.default)();
@@ -93,6 +95,8 @@ app.use('/api/comments', CommentRoutes_1.default);
 app.use('/api/rentals', RentalRoutes_1.default);
 app.use('/api/housing', HousingRoutes_1.default);
 app.use('/api/vacations', VacationRoutes_1.default);
+app.use('/api/financings', FinancingRoutes_1.default);
+app.use('/api/payments', PaymentRoutes_1.default);
 // Inicializar la base de datos y el servidor
 data_source_1.AppDataSource.initialize()
     .then(() => {

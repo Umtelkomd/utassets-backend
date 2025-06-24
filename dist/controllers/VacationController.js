@@ -265,6 +265,59 @@ class VacationController {
                     message: `Ya existe una solicitud de vacación que se solapa con este rango de fechas`
                 });
             }
+            // Validar días disponibles solo para días de descanso
+            if (type === Vacation_1.VacationType.REST_DAY) {
+                const requestedDays = Math.ceil((finalEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                // Calcular días disponibles actuales
+                const currentYear = startDate.getFullYear();
+                const yearStartDate = new Date(currentYear, 0, 1);
+                const yearEndDate = new Date(currentYear, 11, 31);
+                const whereConditions = [
+                    {
+                        userId: parseInt(userId),
+                        status: Vacation_1.VacationStatus.FULLY_APPROVED,
+                        startDate: (0, typeorm_1.Between)(yearStartDate, yearEndDate)
+                    },
+                    {
+                        userId: parseInt(userId),
+                        status: Vacation_1.VacationStatus.FULLY_APPROVED,
+                        endDate: (0, typeorm_1.Between)(yearStartDate, yearEndDate)
+                    },
+                    // También incluir rangos que abarcen el año completo
+                    {
+                        userId: parseInt(userId),
+                        status: Vacation_1.VacationStatus.FULLY_APPROVED,
+                        startDate: (0, typeorm_1.Between)(new Date(currentYear - 1, 11, 1), yearStartDate),
+                        endDate: (0, typeorm_1.Between)(yearEndDate, new Date(currentYear + 1, 0, 31))
+                    }
+                ];
+                const existingVacations = await this.vacationRepository.find({
+                    where: whereConditions
+                });
+                // Calcular días totales considerando los rangos
+                let restDays = 0;
+                let extraWorkDays = 0;
+                existingVacations.forEach(vacation => {
+                    const dayCount = vacation.dayCount;
+                    if (vacation.type === Vacation_1.VacationType.REST_DAY) {
+                        restDays += dayCount;
+                    }
+                    else {
+                        extraWorkDays += dayCount;
+                    }
+                });
+                const availableDays = 25 + extraWorkDays - restDays;
+                if (requestedDays > availableDays) {
+                    return res.status(400).json({
+                        message: `No tienes suficientes días disponibles. Solicitas ${requestedDays} días, pero solo tienes ${availableDays} días disponibles.`,
+                        availableDays,
+                        requestedDays,
+                        usedRestDays: restDays,
+                        extraWorkDays,
+                        totalDays: 25
+                    });
+                }
+            }
             // Determinar el estado inicial según el rol del usuario
             let initialStatus = Vacation_1.VacationStatus.PENDING;
             let isAutoApproved = false;

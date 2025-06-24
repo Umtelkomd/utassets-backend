@@ -19,6 +19,8 @@ import commentRoutes from './routes/CommentRoutes';
 import rentalRoutes from './routes/RentalRoutes';
 import housingRoutes from './routes/HousingRoutes';
 import vacationRoutes from './routes/VacationRoutes';
+import financingRoutes from './routes/FinancingRoutes';
+import paymentRoutes from './routes/PaymentRoutes';
 import path from 'path';
 import fs from 'fs';
 
@@ -98,6 +100,8 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/housing', housingRoutes);
 app.use('/api/vacations', vacationRoutes);
+app.use('/api/financings', financingRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Inicializar la base de datos y el servidor
 AppDataSource.initialize()

@@ -21,6 +21,9 @@ class EmailService {
         try {
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
             const confirmationUrl = `${frontendUrl}/confirm-email?token=${confirmationToken}`;
+            // Log para debuggear la URL generada
+            console.log(`🔗 URL de confirmación generada: ${confirmationUrl}`);
+            console.log(`📧 Enviando correo a: ${user.email}`);
             const subject = isResend
                 ? 'Nuevo enlace de confirmación - UT Assets'
                 : 'Confirma tu cuenta en UT Assets';
