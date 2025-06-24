@@ -6,6 +6,8 @@ import { UserRole } from '../entity/User';
 import { AppDataSource } from '../config/data-source';
 import { UploadService } from '../upload/upload.service';
 import { ConfigService } from '@nestjs/config';
+import { emailService } from '../services/EmailService';
+import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 
 export class UserController {
@@ -44,6 +46,11 @@ export class UserController {
             // Hash de la contraseña
             const hashedPassword = await bcrypt.hash(password, 10);
 
+            // Generar token de confirmación
+            const emailConfirmationToken = uuidv4();
+            const emailConfirmationTokenExpires = new Date();
+            emailConfirmationTokenExpires.setHours(emailConfirmationTokenExpires.getHours() + 24); // Expira en 24 horas
+
             let photoUrl = null;
             let photoPublicId = null;
             if (file) {
@@ -67,6 +74,9 @@ export class UserController {
                 role: role || UserRole.TECH,
                 birthDate: birthDate ? new Date(birthDate) : undefined,
                 isActive: true,
+                isEmailConfirmed: false, // Usuario no confirmado inicialmente
+                emailConfirmationToken,
+                emailConfirmationTokenExpires,
                 photoUrl,
                 photoPublicId
             });
@@ -74,21 +84,24 @@ export class UserController {
             // Guardar el usuario
             await this.userRepository.save(user);
 
-            // Eliminar la contraseña del objeto de respuesta
-            const { password: _, ...userWithoutPassword } = user;
-
-            // Generar token
-            if (!process.env.JWT_SECRET) {
-                throw new Error('JWT_SECRET no está definido');
+            // Enviar correo de confirmación
+            try {
+                const emailSent = await emailService.sendEmailConfirmation(user, emailConfirmationToken);
+                if (!emailSent) {
+                    console.warn('⚠️ No se pudo enviar el correo de confirmación');
+                }
+            } catch (error) {
+                console.error('Error al enviar correo de confirmación:', error);
+                // No devolvemos error aquí para no interrumpir el registro
             }
 
-            const token = jwt.sign(
-                { id: user.id, email: user.email, role: user.role },
-                process.env.JWT_SECRET,
-                { expiresIn: '1h' }
-            );
+            // Eliminar la contraseña del objeto de respuesta
+            const { password: _, emailConfirmationToken: __, ...userWithoutPassword } = user;
 
-            return res.status(201).json({ user: userWithoutPassword, token });
+            return res.status(201).json({
+                user: userWithoutPassword,
+                message: 'Usuario registrado exitosamente. Revisa tu correo electrónico para confirmar tu cuenta.'
+            });
         } catch (error) {
             console.error('Error al crear usuario:', error);
             return res.status(500).json({ message: 'Error al crear usuario' });
@@ -344,6 +357,111 @@ export class UserController {
         } catch (error) {
             console.error('Error al obtener usuario:', error);
             return res.status(500).json({ message: 'Error al obtener usuario' });
+        }
+    }
+
+    async confirmEmail(req: Request, res: Response): Promise<Response> {
+        try {
+            const { token } = req.body;
+
+            if (!token) {
+                return res.status(400).json({ message: 'Token de confirmación requerido' });
+            }
+
+            // Buscar usuario por token de confirmación
+            const user = await this.userRepository.findOne({
+                where: {
+                    emailConfirmationToken: token,
+                    isEmailConfirmed: false
+                }
+            });
+
+            if (!user) {
+                return res.status(400).json({
+                    message: 'Token de confirmación inválido o ya utilizado'
+                });
+            }
+
+            // Verificar si el token ha expirado
+            if (user.emailConfirmationTokenExpires && user.emailConfirmationTokenExpires < new Date()) {
+                return res.status(400).json({
+                    message: 'El token de confirmación ha expirado. Regístrate nuevamente.'
+                });
+            }
+
+            // Confirmar el email del usuario
+            user.isEmailConfirmed = true;
+            user.emailConfirmationToken = undefined;
+            user.emailConfirmationTokenExpires = undefined;
+            await this.userRepository.save(user);
+
+            // Enviar correo de confirmación exitosa
+            try {
+                await emailService.sendEmailConfirmed(user);
+            } catch (error) {
+                console.error('Error al enviar correo de confirmación exitosa:', error);
+                // No interrumpimos el proceso si falla el envío del correo
+            }
+
+            return res.status(200).json({
+                message: 'Email confirmado exitosamente. Ya puedes iniciar sesión.',
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    fullName: user.fullName,
+                    isEmailConfirmed: user.isEmailConfirmed
+                }
+            });
+        } catch (error) {
+            console.error('Error al confirmar email:', error);
+            return res.status(500).json({ message: 'Error al confirmar email' });
+        }
+    }
+
+    async resendConfirmationEmail(req: Request, res: Response): Promise<Response> {
+        try {
+            const { email } = req.body;
+
+            if (!email) {
+                return res.status(400).json({ message: 'Email requerido' });
+            }
+
+            // Buscar usuario por email
+            const user = await this.userRepository.findOne({
+                where: {
+                    email,
+                    isEmailConfirmed: false
+                }
+            });
+
+            if (!user) {
+                return res.status(400).json({
+                    message: 'Usuario no encontrado o ya confirmado'
+                });
+            }
+
+            // Generar nuevo token de confirmación
+            const emailConfirmationToken = uuidv4();
+            const emailConfirmationTokenExpires = new Date();
+            emailConfirmationTokenExpires.setHours(emailConfirmationTokenExpires.getHours() + 24);
+
+            user.emailConfirmationToken = emailConfirmationToken;
+            user.emailConfirmationTokenExpires = emailConfirmationTokenExpires;
+            await this.userRepository.save(user);
+
+            // Enviar nuevo correo de confirmación
+            const emailSent = await emailService.sendEmailConfirmation(user, emailConfirmationToken, true);
+
+            if (!emailSent) {
+                return res.status(500).json({ message: 'Error al enviar el correo de confirmación' });
+            }
+
+            return res.status(200).json({
+                message: 'Correo de confirmación reenviado exitosamente. Revisa tu bandeja de entrada.'
+            });
+        } catch (error) {
+            console.error('Error al reenviar correo de confirmación:', error);
+            return res.status(500).json({ message: 'Error al reenviar correo de confirmación' });
         }
     }
 }

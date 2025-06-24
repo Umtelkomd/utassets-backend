@@ -48,6 +48,7 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET &&
                 fullName: profile.displayName || `${((_a = profile.name) === null || _a === void 0 ? void 0 : _a.givenName) || ''} ${((_b = profile.name) === null || _b === void 0 ? void 0 : _b.familyName) || ''}`.trim(),
                 role: User_1.UserRole.TECH,
                 isActive: true,
+                isEmailConfirmed: true, // Google OAuth confirma automáticamente el email
                 photoUrl: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : undefined,
                 googleId: profile.id
             };

@@ -9,6 +9,8 @@ const controller = new UserController();
 
 // Rutas públicas
 router.post('/register', upload.single('image'), handleMulterError, controller.createUser.bind(controller));
+router.post('/confirm-email', controller.confirmEmail.bind(controller));
+router.post('/resend-confirmation', controller.resendConfirmationEmail.bind(controller));
 
 // Rutas protegidas
 router.use(authMiddleware);

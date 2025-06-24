@@ -51,6 +51,7 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET &&
                 fullName: profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim(),
                 role: UserRole.TECH,
                 isActive: true,
+                isEmailConfirmed: true, // Google OAuth confirma automáticamente el email
                 photoUrl: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : undefined,
                 googleId: profile.id
             };

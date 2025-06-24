@@ -16,6 +16,9 @@ export interface UserCreateDTO {
     lastName?: string;
     role: UserRole;
     isActive?: boolean;
+    isEmailConfirmed?: boolean;
+    emailConfirmationToken?: string;
+    emailConfirmationTokenExpires?: Date;
     phone?: string;
     birthDate?: Date;
     photoUrl?: string;

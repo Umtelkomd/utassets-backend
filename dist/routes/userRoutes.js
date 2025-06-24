@@ -9,6 +9,8 @@ const router = (0, express_1.Router)();
 const controller = new userController_1.UserController();
 // Rutas públicas
 router.post('/register', uploadMiddleware_1.upload.single('image'), uploadMiddleware_1.handleMulterError, controller.createUser.bind(controller));
+router.post('/confirm-email', controller.confirmEmail.bind(controller));
+router.post('/resend-confirmation', controller.resendConfirmationEmail.bind(controller));
 // Rutas protegidas
 router.use(authMiddleware_1.authMiddleware);
 // Rutas que requieren autenticación

@@ -48,11 +48,61 @@ export class AuthController {
                 return;
             }
 
-            // Verificar la contraseña
+            // PRIMERO verificar la contraseña antes de enviar correos
             const isValidPassword = await userRepository.verifyPassword(user, password);
             if (!isValidPassword) {
                 res.status(401).json({ message: 'Credenciales inválidas' });
                 return;
+            }
+
+            // DESPUÉS verificar si el email está confirmado (solo si las credenciales son correctas)
+            if (!user.isEmailConfirmed) {
+                try {
+                    // Generar nuevo token de confirmación
+                    const { v4: uuidv4 } = await import('uuid');
+                    const newConfirmationToken = uuidv4();
+                    const newTokenExpires = new Date();
+                    newTokenExpires.setHours(newTokenExpires.getHours() + 24); // 24 horas nuevas
+
+                    // Actualizar el usuario con el nuevo token
+                    await userRepository.updateUser(user.id, {
+                        emailConfirmationToken: newConfirmationToken,
+                        emailConfirmationTokenExpires: newTokenExpires
+                    });
+
+                    // Importar el servicio de email dinámicamente
+                    const { emailService } = await import('../services/EmailService');
+
+                    // Enviar nuevo correo de confirmación
+                    const emailSent = await emailService.sendEmailConfirmation(
+                        { ...user, emailConfirmationToken: newConfirmationToken },
+                        newConfirmationToken,
+                        true // Es un reenvío
+                    );
+
+                    const message = emailSent
+                        ? 'Tu cuenta no está confirmada. Hemos enviado un nuevo correo de confirmación a tu bandeja de entrada.'
+                        : 'Tu cuenta no está confirmada. Hemos intentado enviarte un correo de confirmación, pero hubo un problema. Por favor, solicita un nuevo correo desde la página de login.';
+
+                    console.log(`📧 Nuevo correo de confirmación ${emailSent ? 'enviado' : 'falló'} para usuario: ${user.email}`);
+
+                    res.status(401).json({
+                        message,
+                        emailNotConfirmed: true,
+                        email: user.email,
+                        newEmailSent: emailSent
+                    });
+                    return;
+                } catch (emailError) {
+                    console.error('Error al enviar correo de confirmación automático:', emailError);
+                    res.status(401).json({
+                        message: 'Tu cuenta no está confirmada. Hubo un problema al enviar el correo de confirmación. Por favor, solicita un nuevo correo desde la página de login.',
+                        emailNotConfirmed: true,
+                        email: user.email,
+                        newEmailSent: false
+                    });
+                    return;
+                }
             }
 
             // Actualizar último inicio de sesión

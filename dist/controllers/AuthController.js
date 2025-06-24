@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -39,11 +72,52 @@ class AuthController {
                 res.status(401).json({ message: 'Usuario desactivado. Contacte al administrador.' });
                 return;
             }
-            // Verificar la contraseña
+            // PRIMERO verificar la contraseña antes de enviar correos
             const isValidPassword = await UserRepository_1.userRepository.verifyPassword(user, password);
             if (!isValidPassword) {
                 res.status(401).json({ message: 'Credenciales inválidas' });
                 return;
+            }
+            // DESPUÉS verificar si el email está confirmado (solo si las credenciales son correctas)
+            if (!user.isEmailConfirmed) {
+                try {
+                    // Generar nuevo token de confirmación
+                    const { v4: uuidv4 } = await Promise.resolve().then(() => __importStar(require('uuid')));
+                    const newConfirmationToken = uuidv4();
+                    const newTokenExpires = new Date();
+                    newTokenExpires.setHours(newTokenExpires.getHours() + 24); // 24 horas nuevas
+                    // Actualizar el usuario con el nuevo token
+                    await UserRepository_1.userRepository.updateUser(user.id, {
+                        emailConfirmationToken: newConfirmationToken,
+                        emailConfirmationTokenExpires: newTokenExpires
+                    });
+                    // Importar el servicio de email dinámicamente
+                    const { emailService } = await Promise.resolve().then(() => __importStar(require('../services/EmailService')));
+                    // Enviar nuevo correo de confirmación
+                    const emailSent = await emailService.sendEmailConfirmation({ ...user, emailConfirmationToken: newConfirmationToken }, newConfirmationToken, true // Es un reenvío
+                    );
+                    const message = emailSent
+                        ? 'Tu cuenta no está confirmada. Hemos enviado un nuevo correo de confirmación a tu bandeja de entrada.'
+                        : 'Tu cuenta no está confirmada. Hemos intentado enviarte un correo de confirmación, pero hubo un problema. Por favor, solicita un nuevo correo desde la página de login.';
+                    console.log(`📧 Nuevo correo de confirmación ${emailSent ? 'enviado' : 'falló'} para usuario: ${user.email}`);
+                    res.status(401).json({
+                        message,
+                        emailNotConfirmed: true,
+                        email: user.email,
+                        newEmailSent: emailSent
+                    });
+                    return;
+                }
+                catch (emailError) {
+                    console.error('Error al enviar correo de confirmación automático:', emailError);
+                    res.status(401).json({
+                        message: 'Tu cuenta no está confirmada. Hubo un problema al enviar el correo de confirmación. Por favor, solicita un nuevo correo desde la página de login.',
+                        emailNotConfirmed: true,
+                        email: user.email,
+                        newEmailSent: false
+                    });
+                    return;
+                }
             }
             // Actualizar último inicio de sesión
             const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;

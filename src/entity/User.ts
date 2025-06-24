@@ -62,6 +62,15 @@ export class User {
     @Column({ name: 'google_id', type: 'varchar', nullable: true, unique: true })
     googleId?: string;
 
+    @Column({ name: 'is_email_confirmed', default: false })
+    isEmailConfirmed: boolean;
+
+    @Column({ name: 'email_confirmation_token', type: 'varchar', nullable: true })
+    emailConfirmationToken?: string;
+
+    @Column({ name: 'email_confirmation_token_expires', type: 'timestamp', nullable: true })
+    emailConfirmationTokenExpires?: Date;
+
     @CreateDateColumn()
     createdAt: Date;
 
