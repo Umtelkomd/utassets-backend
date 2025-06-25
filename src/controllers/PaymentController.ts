@@ -83,9 +83,25 @@ export class PaymentController {
             // Actualizar el financiamiento
             const financing = await this.financingRepository.findById(payment.financing.id);
             if (financing) {
-                const newTotalPaid = financing.totalPaid + (actualAmount || payment.scheduledAmount);
-                const newPaymentsMade = financing.paymentsMade + 1;
-                const newCurrentBalance = financing.loanAmount - financing.downPayment - newTotalPaid;
+                // ✅ Asegurar que todos los valores sean números válidos
+                const currentTotalPaid = parseFloat(financing.totalPaid?.toString() || '0') || 0;
+                const paymentAmount = parseFloat((actualAmount || payment.scheduledAmount)?.toString() || '0') || 0;
+                const loanAmount = parseFloat(financing.loanAmount?.toString() || '0') || 0;
+                const downPayment = parseFloat(financing.downPayment?.toString() || '0') || 0;
+                const currentPaymentsMade = parseInt(financing.paymentsMade?.toString() || '0') || 0;
+
+                const newTotalPaid = currentTotalPaid + paymentAmount;
+                const newPaymentsMade = currentPaymentsMade + 1;
+                const newCurrentBalance = loanAmount - downPayment - newTotalPaid;
+
+                console.log('💰 Payment Update Debug:', {
+                    financingId: financing.id,
+                    currentTotalPaid,
+                    paymentAmount,
+                    newTotalPaid,
+                    newPaymentsMade,
+                    newCurrentBalance: Math.max(0, newCurrentBalance)
+                });
 
                 await this.financingRepository.update(financing.id, {
                     totalPaid: newTotalPaid,
@@ -239,9 +255,16 @@ export class PaymentController {
                     // Actualizar financiamiento
                     const financing = await this.financingRepository.findById(payment.financing.id);
                     if (financing) {
-                        const newTotalPaid = financing.totalPaid + (actualAmount || payment.scheduledAmount);
-                        const newPaymentsMade = financing.paymentsMade + 1;
-                        const newCurrentBalance = financing.loanAmount - financing.downPayment - newTotalPaid;
+                        // ✅ Asegurar que todos los valores sean números válidos
+                        const currentTotalPaid = parseFloat(financing.totalPaid?.toString() || '0') || 0;
+                        const paymentAmount = parseFloat((actualAmount || payment.scheduledAmount)?.toString() || '0') || 0;
+                        const loanAmount = parseFloat(financing.loanAmount?.toString() || '0') || 0;
+                        const downPayment = parseFloat(financing.downPayment?.toString() || '0') || 0;
+                        const currentPaymentsMade = parseInt(financing.paymentsMade?.toString() || '0') || 0;
+
+                        const newTotalPaid = currentTotalPaid + paymentAmount;
+                        const newPaymentsMade = currentPaymentsMade + 1;
+                        const newCurrentBalance = loanAmount - downPayment - newTotalPaid;
 
                         await this.financingRepository.update(financing.id, {
                             totalPaid: newTotalPaid,

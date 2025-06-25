@@ -47,6 +47,7 @@ class PaymentController {
         };
         // Registrar un pago
         this.recordPayment = async (req, res) => {
+            var _a, _b, _c, _d, _e;
             try {
                 const { id } = req.params;
                 const { actualAmount, actualDate, paymentMethod, reference, notes } = req.body;
@@ -62,9 +63,23 @@ class PaymentController {
                 // Actualizar el financiamiento
                 const financing = await this.financingRepository.findById(payment.financing.id);
                 if (financing) {
-                    const newTotalPaid = financing.totalPaid + (actualAmount || payment.scheduledAmount);
-                    const newPaymentsMade = financing.paymentsMade + 1;
-                    const newCurrentBalance = financing.loanAmount - financing.downPayment - newTotalPaid;
+                    // ✅ Asegurar que todos los valores sean números válidos
+                    const currentTotalPaid = parseFloat(((_a = financing.totalPaid) === null || _a === void 0 ? void 0 : _a.toString()) || '0') || 0;
+                    const paymentAmount = parseFloat(((_b = (actualAmount || payment.scheduledAmount)) === null || _b === void 0 ? void 0 : _b.toString()) || '0') || 0;
+                    const loanAmount = parseFloat(((_c = financing.loanAmount) === null || _c === void 0 ? void 0 : _c.toString()) || '0') || 0;
+                    const downPayment = parseFloat(((_d = financing.downPayment) === null || _d === void 0 ? void 0 : _d.toString()) || '0') || 0;
+                    const currentPaymentsMade = parseInt(((_e = financing.paymentsMade) === null || _e === void 0 ? void 0 : _e.toString()) || '0') || 0;
+                    const newTotalPaid = currentTotalPaid + paymentAmount;
+                    const newPaymentsMade = currentPaymentsMade + 1;
+                    const newCurrentBalance = loanAmount - downPayment - newTotalPaid;
+                    console.log('💰 Payment Update Debug:', {
+                        financingId: financing.id,
+                        currentTotalPaid,
+                        paymentAmount,
+                        newTotalPaid,
+                        newPaymentsMade,
+                        newCurrentBalance: Math.max(0, newCurrentBalance)
+                    });
                     await this.financingRepository.update(financing.id, {
                         totalPaid: newTotalPaid,
                         paymentsMade: newPaymentsMade,
@@ -172,6 +187,7 @@ class PaymentController {
         };
         // Registrar múltiples pagos
         this.recordMultiplePayments = async (req, res) => {
+            var _a, _b, _c, _d, _e;
             try {
                 const { payments } = req.body;
                 if (!Array.isArray(payments) || payments.length === 0) {
@@ -195,9 +211,15 @@ class PaymentController {
                         // Actualizar financiamiento
                         const financing = await this.financingRepository.findById(payment.financing.id);
                         if (financing) {
-                            const newTotalPaid = financing.totalPaid + (actualAmount || payment.scheduledAmount);
-                            const newPaymentsMade = financing.paymentsMade + 1;
-                            const newCurrentBalance = financing.loanAmount - financing.downPayment - newTotalPaid;
+                            // ✅ Asegurar que todos los valores sean números válidos
+                            const currentTotalPaid = parseFloat(((_a = financing.totalPaid) === null || _a === void 0 ? void 0 : _a.toString()) || '0') || 0;
+                            const paymentAmount = parseFloat(((_b = (actualAmount || payment.scheduledAmount)) === null || _b === void 0 ? void 0 : _b.toString()) || '0') || 0;
+                            const loanAmount = parseFloat(((_c = financing.loanAmount) === null || _c === void 0 ? void 0 : _c.toString()) || '0') || 0;
+                            const downPayment = parseFloat(((_d = financing.downPayment) === null || _d === void 0 ? void 0 : _d.toString()) || '0') || 0;
+                            const currentPaymentsMade = parseInt(((_e = financing.paymentsMade) === null || _e === void 0 ? void 0 : _e.toString()) || '0') || 0;
+                            const newTotalPaid = currentTotalPaid + paymentAmount;
+                            const newPaymentsMade = currentPaymentsMade + 1;
+                            const newCurrentBalance = loanAmount - downPayment - newTotalPaid;
                             await this.financingRepository.update(financing.id, {
                                 totalPaid: newTotalPaid,
                                 paymentsMade: newPaymentsMade,
