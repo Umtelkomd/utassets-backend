@@ -143,7 +143,6 @@ class PaymentRepository {
             .update(Payment_1.Payment)
             .set({
             status: Payment_1.PaymentStatus.OVERDUE,
-            daysOverdue: () => 'DATEDIFF(CURDATE(), scheduled_date)',
             updatedAt: today
         })
             .where('id IN (:...ids)', { ids: paymentIds })

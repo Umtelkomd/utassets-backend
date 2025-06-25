@@ -34,8 +34,8 @@ class FinancingCalculationService {
             }
             remainingBalance -= principalAmount;
             totalInterest += interestAmount;
-            const scheduledDate = new Date(startDate);
-            scheduledDate.setMonth(scheduledDate.getMonth() + i);
+            // ✅ CORREGIDO: Manejo seguro de fechas
+            const scheduledDate = this.addMonthsToDate(startDate, i);
             paymentSchedule.push({
                 paymentNumber: i,
                 scheduledDate,
@@ -45,10 +45,12 @@ class FinancingCalculationService {
                 remainingBalance: Math.max(0, Math.round(remainingBalance * 100) / 100)
             });
         }
+        // Calcular el total a pagar sumando todas las cuotas (más preciso)
+        const totalToPay = paymentSchedule.reduce((sum, payment) => sum + payment.scheduledAmount, 0);
         return {
             monthlyPayment: Math.round(monthlyPayment * 100) / 100,
             totalInterest: Math.round(totalInterest * 100) / 100,
-            totalAmount: netLoanAmount + Math.round(totalInterest * 100) / 100,
+            totalAmount: Math.round(totalToPay * 100) / 100,
             paymentSchedule
         };
     }
@@ -97,11 +99,12 @@ class FinancingCalculationService {
     /**
      * Calcula el ahorro por pago anticipado
      */
-    static calculateEarlyPaymentSavings(loanAmount, interestRate, termMonths, startDate, extraPayment, paymentsMade = 0) {
-        const originalCalculation = this.generatePaymentSchedule(loanAmount, interestRate, termMonths, startDate);
+    static calculateEarlyPaymentSavings(loanAmount, interestRate, termMonths, startDate, extraPayment, paymentsMade = 0, downPayment = 0) {
+        const netLoanAmount = loanAmount - downPayment;
+        const originalCalculation = this.generatePaymentSchedule(loanAmount, interestRate, termMonths, startDate, downPayment);
         // Simular pagos con monto extra
         const monthlyRate = interestRate / 100 / 12;
-        let remainingBalance = loanAmount;
+        let remainingBalance = netLoanAmount; // ✅ CORREGIDO: Usar monto neto
         let monthsWithExtra = 0;
         let totalInterestWithExtra = 0;
         // Descontar pagos ya realizados
@@ -122,8 +125,7 @@ class FinancingCalculationService {
         }
         const monthsSaved = (termMonths - paymentsMade) - monthsWithExtra;
         const interestSaved = originalCalculation.totalInterest - totalInterestWithExtra;
-        const newEndDate = new Date(startDate);
-        newEndDate.setMonth(newEndDate.getMonth() + paymentsMade + monthsWithExtra);
+        const newEndDate = this.addMonthsToDate(startDate, paymentsMade + monthsWithExtra);
         return {
             monthsSaved: Math.max(0, monthsSaved),
             interestSaved: Math.max(0, Math.round(interestSaved * 100) / 100),
@@ -144,13 +146,26 @@ class FinancingCalculationService {
         if (termMonths <= 0 || termMonths > 600) {
             errors.push('El plazo debe estar entre 1 y 600 meses');
         }
-        if (downPayment < 0 || downPayment >= loanAmount) {
+        if (downPayment < 0 || downPayment > loanAmount) {
             errors.push('La cuota inicial debe ser mayor o igual a 0 y menor al monto del préstamo');
         }
         return {
             isValid: errors.length === 0,
             errors
         };
+    }
+    /**
+     * Añade meses a una fecha de forma segura
+     */
+    static addMonthsToDate(date, months) {
+        const result = new Date(date);
+        const originalDay = result.getDate();
+        result.setMonth(result.getMonth() + months);
+        // Si el día cambió (ej: 31 enero + 1 mes = 3 marzo), ajustar al último día del mes correcto
+        if (result.getDate() !== originalDay) {
+            result.setDate(0); // Último día del mes anterior
+        }
+        return result;
     }
 }
 exports.FinancingCalculationService = FinancingCalculationService;

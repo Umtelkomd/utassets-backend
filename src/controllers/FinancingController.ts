@@ -87,11 +87,38 @@ export class FinancingController {
                 financing.downPayment
             );
 
-            res.json({
+            // Calcular TODOS los valores en el backend
+            const calculatedTotals = {
+                totalToPay: calculation.totalAmount,
+                totalInterest: calculation.totalInterest,
+                monthlyPayment: calculation.monthlyPayment,
+                netLoanAmount: financing.loanAmount - (financing.downPayment || 0),
+                downPayment: financing.downPayment || 0,
+                grossLoanAmount: financing.loanAmount
+            };
+
+            // Debug logging
+            console.log('🔍 Backend Calculations Complete:', {
+                id: financing.id,
+                calculatedTotals,
+                amortizationTableLength: calculation.paymentSchedule.length,
+                firstPayment: calculation.paymentSchedule[0]
+            });
+
+            const response = {
                 ...financing,
                 summary,
+                calculations: calculatedTotals,           // ✅ Todos los cálculos listos
                 amortizationTable: calculation.paymentSchedule
+            };
+
+            console.log('📤 Backend Response - Ready to use calculations:', {
+                totalToPay: response.calculations.totalToPay,
+                totalInterest: response.calculations.totalInterest,
+                monthlyPayment: response.calculations.monthlyPayment
             });
+
+            res.json(response);
         } catch (error) {
             console.error('Error getting financing:', error);
             res.status(500).json({ message: 'Error al obtener el financiamiento' });
@@ -151,8 +178,11 @@ export class FinancingController {
                 downPayment
             );
 
+            // ✅ CORREGIDO: Usar método seguro para fechas
             const endDate = new Date(startDate);
-            endDate.setMonth(endDate.getMonth() + termMonths);
+            const endDateMonth = endDate.getMonth() + termMonths;
+            const endDateYear = endDate.getFullYear() + Math.floor(endDateMonth / 12);
+            endDate.setFullYear(endDateYear, endDateMonth % 12, endDate.getDate());
 
             // Crear financiamiento
             const financing = await this.financingRepository.create({
@@ -332,11 +362,13 @@ export class FinancingController {
             // Calcular escenarios con pagos extra
             const extraPaymentScenarios = [100, 200, 500, 1000].map(extra => {
                 const savings = FinancingCalculationService.calculateEarlyPaymentSavings(
-                    loanAmount - downPayment,
+                    loanAmount,
                     interestRate,
                     termMonths,
                     new Date(startDate),
-                    extra
+                    extra,
+                    0,
+                    downPayment
                 );
                 return {
                     extraPayment: extra,

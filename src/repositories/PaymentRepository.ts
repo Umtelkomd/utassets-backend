@@ -168,7 +168,6 @@ export class PaymentRepository {
             .update(Payment)
             .set({
                 status: PaymentStatus.OVERDUE,
-                daysOverdue: () => 'DATEDIFF(CURDATE(), scheduled_date)',
                 updatedAt: today
             })
             .where('id IN (:...ids)', { ids: paymentIds })

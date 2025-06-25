@@ -150,7 +150,24 @@ export class FinancingRepository {
     }
 
     async delete(id: number): Promise<void> {
-        await this.repository.delete(id);
+        // Usar transacción para eliminar en cascada
+        await this.repository.manager.transaction(async transactionalEntityManager => {
+            // Primero eliminar todos los pagos asociados
+            await transactionalEntityManager
+                .createQueryBuilder()
+                .delete()
+                .from(Payment)
+                .where('financing_id = :id', { id })
+                .execute();
+
+            // Luego eliminar el financiamiento
+            await transactionalEntityManager
+                .createQueryBuilder()
+                .delete()
+                .from(Financing)
+                .where('id = :id', { id })
+                .execute();
+        });
     }
 
     async findByAssetTypeGrouped(): Promise<{ assetType: AssetType; count: number; totalAmount: number }[]> {

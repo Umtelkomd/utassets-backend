@@ -11,8 +11,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Payment = exports.PaymentStatus = void 0;
 const typeorm_1 = require("typeorm");
-const User_1 = require("./User");
 const Financing_1 = require("./Financing");
+const User_1 = require("./User");
 var PaymentStatus;
 (function (PaymentStatus) {
     PaymentStatus["PENDING"] = "pending";
@@ -28,6 +28,11 @@ __decorate([
     __metadata("design:type", Number)
 ], Payment.prototype, "id", void 0);
 __decorate([
+    (0, typeorm_1.ManyToOne)(() => Financing_1.Financing, financing => financing.payments),
+    (0, typeorm_1.JoinColumn)({ name: 'financing_id' }),
+    __metadata("design:type", Financing_1.Financing)
+], Payment.prototype, "financing", void 0);
+__decorate([
     (0, typeorm_1.Column)({ name: 'payment_number', type: 'int' }),
     __metadata("design:type", Number)
 ], Payment.prototype, "paymentNumber", void 0);
@@ -36,17 +41,9 @@ __decorate([
     __metadata("design:type", Date)
 ], Payment.prototype, "scheduledDate", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'actual_date', type: 'date', nullable: true }),
-    __metadata("design:type", Object)
-], Payment.prototype, "actualDate", void 0);
-__decorate([
     (0, typeorm_1.Column)({ name: 'scheduled_amount', type: 'decimal', precision: 12, scale: 2 }),
     __metadata("design:type", Number)
 ], Payment.prototype, "scheduledAmount", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'actual_amount', type: 'decimal', precision: 12, scale: 2, nullable: true }),
-    __metadata("design:type", Object)
-], Payment.prototype, "actualAmount", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'principal_amount', type: 'decimal', precision: 12, scale: 2 }),
     __metadata("design:type", Number)
@@ -59,6 +56,14 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'remaining_balance', type: 'decimal', precision: 12, scale: 2 }),
     __metadata("design:type", Number)
 ], Payment.prototype, "remainingBalance", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'actual_date', type: 'date', nullable: true }),
+    __metadata("design:type", Object)
+], Payment.prototype, "actualDate", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'actual_amount', type: 'decimal', precision: 12, scale: 2, nullable: true }),
+    __metadata("design:type", Object)
+], Payment.prototype, "actualAmount", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
@@ -80,20 +85,7 @@ __decorate([
     __metadata("design:type", Object)
 ], Payment.prototype, "notes", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'late_fee', type: 'decimal', precision: 12, scale: 2, default: 0 }),
-    __metadata("design:type", Number)
-], Payment.prototype, "lateFee", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'days_overdue', type: 'int', default: 0 }),
-    __metadata("design:type", Number)
-], Payment.prototype, "daysOverdue", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => Financing_1.Financing, financing => financing.payments, { onDelete: 'CASCADE' }),
-    (0, typeorm_1.JoinColumn)({ name: 'financing_id' }),
-    __metadata("design:type", Financing_1.Financing)
-], Payment.prototype, "financing", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User),
+    (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true }),
     (0, typeorm_1.JoinColumn)({ name: 'recorded_by' }),
     __metadata("design:type", Object)
 ], Payment.prototype, "recordedBy", void 0);

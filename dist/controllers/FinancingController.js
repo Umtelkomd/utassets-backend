@@ -48,11 +48,34 @@ class FinancingController {
                 // Calcular resumen y tabla de amortización
                 const summary = FinancingCalculationService_1.FinancingCalculationService.calculateFinancingSummary(financing.loanAmount, financing.interestRate, financing.termMonths, financing.startDate, financing.paymentsMade, financing.totalPaid, financing.downPayment);
                 const calculation = FinancingCalculationService_1.FinancingCalculationService.generatePaymentSchedule(financing.loanAmount, financing.interestRate, financing.termMonths, financing.startDate, financing.downPayment);
-                res.json({
+                // Calcular TODOS los valores en el backend
+                const calculatedTotals = {
+                    totalToPay: calculation.totalAmount,
+                    totalInterest: calculation.totalInterest,
+                    monthlyPayment: calculation.monthlyPayment,
+                    netLoanAmount: financing.loanAmount - (financing.downPayment || 0),
+                    downPayment: financing.downPayment || 0,
+                    grossLoanAmount: financing.loanAmount
+                };
+                // Debug logging
+                console.log('🔍 Backend Calculations Complete:', {
+                    id: financing.id,
+                    calculatedTotals,
+                    amortizationTableLength: calculation.paymentSchedule.length,
+                    firstPayment: calculation.paymentSchedule[0]
+                });
+                const response = {
                     ...financing,
                     summary,
+                    calculations: calculatedTotals, // ✅ Todos los cálculos listos
                     amortizationTable: calculation.paymentSchedule
+                };
+                console.log('📤 Backend Response - Ready to use calculations:', {
+                    totalToPay: response.calculations.totalToPay,
+                    totalInterest: response.calculations.totalInterest,
+                    monthlyPayment: response.calculations.monthlyPayment
                 });
+                res.json(response);
             }
             catch (error) {
                 console.error('Error getting financing:', error);
@@ -80,8 +103,11 @@ class FinancingController {
                 }
                 // Calcular valores
                 const calculation = FinancingCalculationService_1.FinancingCalculationService.generatePaymentSchedule(loanAmount, interestRate, termMonths, new Date(startDate), downPayment);
+                // ✅ CORREGIDO: Usar método seguro para fechas
                 const endDate = new Date(startDate);
-                endDate.setMonth(endDate.getMonth() + termMonths);
+                const endDateMonth = endDate.getMonth() + termMonths;
+                const endDateYear = endDate.getFullYear() + Math.floor(endDateMonth / 12);
+                endDate.setFullYear(endDateYear, endDateMonth % 12, endDate.getDate());
                 // Crear financiamiento
                 const financing = await this.financingRepository.create({
                     assetType,
@@ -230,7 +256,7 @@ class FinancingController {
                 const calculation = FinancingCalculationService_1.FinancingCalculationService.generatePaymentSchedule(loanAmount, interestRate, termMonths, new Date(startDate), downPayment);
                 // Calcular escenarios con pagos extra
                 const extraPaymentScenarios = [100, 200, 500, 1000].map(extra => {
-                    const savings = FinancingCalculationService_1.FinancingCalculationService.calculateEarlyPaymentSavings(loanAmount - downPayment, interestRate, termMonths, new Date(startDate), extra);
+                    const savings = FinancingCalculationService_1.FinancingCalculationService.calculateEarlyPaymentSavings(loanAmount, interestRate, termMonths, new Date(startDate), extra, 0, downPayment);
                     return {
                         extraPayment: extra,
                         ...savings

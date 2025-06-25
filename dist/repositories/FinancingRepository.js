@@ -127,7 +127,23 @@ class FinancingRepository {
         return await this.findById(id);
     }
     async delete(id) {
-        await this.repository.delete(id);
+        // Usar transacción para eliminar en cascada
+        await this.repository.manager.transaction(async (transactionalEntityManager) => {
+            // Primero eliminar todos los pagos asociados
+            await transactionalEntityManager
+                .createQueryBuilder()
+                .delete()
+                .from(Payment_1.Payment)
+                .where('financing_id = :id', { id })
+                .execute();
+            // Luego eliminar el financiamiento
+            await transactionalEntityManager
+                .createQueryBuilder()
+                .delete()
+                .from(Financing_1.Financing)
+                .where('id = :id', { id })
+                .execute();
+        });
     }
     async findByAssetTypeGrouped() {
         const result = await this.repository
