@@ -103,6 +103,15 @@ class VacationController {
             const { userId } = req.params;
             const { year } = req.query;
             const currentYear = year ? parseInt(year) : new Date().getFullYear();
+            // Obtener los días de vacaciones personalizados del usuario
+            const user = await this.userRepository.findOne({
+                where: { id: parseInt(userId) },
+                select: ['vacationDays']
+            });
+            if (!user) {
+                return res.status(404).json({ message: 'Usuario no encontrado' });
+            }
+            const userVacationDays = user.vacationDays || 25; // Fallback a 25 días
             const startDate = new Date(currentYear, 0, 1);
             const endDate = new Date(currentYear, 11, 31);
             // Solo contar vacaciones completamente aprobadas
@@ -140,9 +149,9 @@ class VacationController {
                     extraWorkDays += dayCount;
                 }
             });
-            const availableDays = 25 + extraWorkDays - restDays;
+            const availableDays = userVacationDays + extraWorkDays - restDays;
             return res.json({
-                totalDays: 25,
+                totalDays: userVacationDays,
                 extraWorkDays,
                 usedRestDays: restDays,
                 availableDays,
@@ -161,7 +170,7 @@ class VacationController {
             const currentYear = year ? parseInt(year) : new Date().getFullYear();
             const users = await this.userRepository.find({
                 where: { isActive: true },
-                select: ['id', 'fullName', 'photoUrl', 'email']
+                select: ['id', 'fullName', 'photoUrl', 'email', 'vacationDays']
             });
             const startDate = new Date(currentYear, 0, 1);
             const endDate = new Date(currentYear, 11, 31);
@@ -201,10 +210,11 @@ class VacationController {
                         extraWorkDays += dayCount;
                     }
                 });
-                const availableDays = 25 + extraWorkDays - restDays;
+                const userVacationDays = user.vacationDays || 25; // Fallback a 25 días
+                const availableDays = userVacationDays + extraWorkDays - restDays;
                 return {
                     ...user,
-                    totalDays: 25,
+                    totalDays: userVacationDays,
                     extraWorkDays,
                     usedRestDays: restDays,
                     availableDays,
@@ -996,6 +1006,59 @@ class VacationController {
         catch (error) {
             console.error('Error al aprobar vacaciones múltiples:', error);
             return res.status(500).json({ message: 'Error al aprobar vacaciones múltiples' });
+        }
+    }
+    // Actualizar días de vacaciones de un usuario
+    async updateUserVacationDays(req, res) {
+        try {
+            const { userId } = req.params;
+            const { vacationDays } = req.body;
+            // Verificar autenticación
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+            const currentUserRole = req.userRole;
+            // Solo administradores pueden ajustar días de vacaciones
+            if (currentUserRole !== 'administrador') {
+                return res.status(403).json({ message: 'Solo los administradores pueden ajustar días de vacaciones' });
+            }
+            // Validar campos requeridos
+            if (!userId || vacationDays === undefined) {
+                return res.status(400).json({
+                    message: 'Faltan campos requeridos: userId y vacationDays'
+                });
+            }
+            // Validar que vacationDays sea un número positivo
+            const newVacationDays = parseInt(vacationDays);
+            if (isNaN(newVacationDays) || newVacationDays < 0) {
+                return res.status(400).json({
+                    message: 'Los días de vacaciones deben ser un número positivo'
+                });
+            }
+            // Verificar si el usuario existe
+            const user = await this.userRepository.findOne({
+                where: { id: parseInt(userId) },
+                select: ['id', 'fullName', 'vacationDays']
+            });
+            if (!user) {
+                return res.status(404).json({ message: 'Usuario no encontrado' });
+            }
+            const previousDays = user.vacationDays || 25;
+            // Actualizar los días de vacaciones
+            user.vacationDays = newVacationDays;
+            await this.userRepository.save(user);
+            return res.json({
+                message: `Días de vacaciones actualizados correctamente para ${user.fullName}`,
+                userId: user.id,
+                userName: user.fullName,
+                previousDays,
+                newDays: newVacationDays,
+                difference: newVacationDays - previousDays
+            });
+        }
+        catch (error) {
+            console.error('Error al actualizar días de vacaciones:', error);
+            return res.status(500).json({ message: 'Error al actualizar días de vacaciones' });
         }
     }
 }

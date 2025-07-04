@@ -29,7 +29,7 @@ const PaymentRoutes_1 = __importDefault(require("./routes/PaymentRoutes"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 5050;
+const PORT = process.env.PORT || 5051;
 // Crear directorios necesarios
 const createUploadDirectories = () => {
     const dirs = [

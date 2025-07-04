@@ -97,6 +97,10 @@ __decorate([
     __metadata("design:type", Date)
 ], User.prototype, "emailConfirmationTokenExpires", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'vacation_days', type: 'int', default: 25 }),
+    __metadata("design:type", Number)
+], User.prototype, "vacationDays", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], User.prototype, "createdAt", void 0);

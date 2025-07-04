@@ -25,7 +25,7 @@ import path from 'path';
 import fs from 'fs';
 
 const app = express();
-const PORT = process.env.PORT || 5050;
+const PORT = process.env.PORT || 5051;
 
 // Crear directorios necesarios
 const createUploadDirectories = () => {
