@@ -71,6 +71,9 @@ export class User {
     @Column({ name: 'email_confirmation_token_expires', type: 'timestamp', nullable: true })
     emailConfirmationTokenExpires?: Date;
 
+    @Column({ name: 'vacation_days', type: 'int', default: 25 })
+    vacationDays: number;
+
     @CreateDateColumn()
     createdAt: Date;
 

@@ -36,5 +36,6 @@ router.delete('/reject/period', controller.rejectPeriodVacations.bind(controller
 
 router.delete('/:id', controller.deleteVacation.bind(controller));
 router.delete('/bulk/multiple', controller.deleteBulkVacations.bind(controller));
+router.put('/users/:userId/vacation-days', controller.updateUserVacationDays.bind(controller));
 
 export default router; 
