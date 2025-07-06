@@ -380,6 +380,8 @@ export class VacationController {
                     }
                 });
 
+                console.log('userVacationDays', userVacationDays, 'extraWorkDays', extraWorkDays, 'restDays', restDays);
+
                 const availableDays = userVacationDays + extraWorkDays - restDays;
 
                 // Log para debugging
