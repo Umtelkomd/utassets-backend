@@ -282,11 +282,16 @@ export class VacationController {
                 });
             }
 
-            // Verificar si el usuario existe
-            const user = await this.userRepository.findOne({ where: { id: parseInt(userId) } });
+            // Verificar si el usuario existe y obtener sus días de vacaciones
+            const user = await this.userRepository.findOne({
+                where: { id: parseInt(userId) },
+                select: ['id', 'fullName', 'email', 'vacationDays']
+            });
             if (!user) {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
+
+            const userVacationDays = user.vacationDays || 25; // Fallback a 25 días
 
             // Determinar fechas del rango
             const startDate = new Date(date);
@@ -318,6 +323,20 @@ export class VacationController {
             // Validar días disponibles solo para días de descanso
             if (type === VacationType.REST_DAY) {
                 const requestedDays = Math.ceil((finalEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+                // Validar que el número de días solicitados sea razonable
+                if (requestedDays < 1 || requestedDays > 365) {
+                    return res.status(400).json({
+                        message: `El número de días solicitados (${requestedDays}) no es válido. Debe estar entre 1 y 365 días.`
+                    });
+                }
+
+                // Validar que las fechas sean válidas
+                if (isNaN(startDate.getTime()) || isNaN(finalEndDate.getTime())) {
+                    return res.status(400).json({
+                        message: 'Las fechas proporcionadas no son válidas.'
+                    });
+                }
 
                 // Calcular días disponibles actuales
                 const currentYear = startDate.getFullYear();
@@ -361,7 +380,21 @@ export class VacationController {
                     }
                 });
 
-                const availableDays = 25 + extraWorkDays - restDays;
+                const availableDays = userVacationDays + extraWorkDays - restDays;
+
+                // Log para debugging
+                console.log('Vacation Request Validation:', {
+                    userId: userId,
+                    userName: user.fullName,
+                    userVacationDays: userVacationDays,
+                    requestedDays: requestedDays,
+                    restDays: restDays,
+                    extraWorkDays: extraWorkDays,
+                    availableDays: availableDays,
+                    startDate: startDate.toISOString(),
+                    endDate: finalEndDate.toISOString(),
+                    type: type
+                });
 
                 if (requestedDays > availableDays) {
                     return res.status(400).json({
@@ -370,7 +403,7 @@ export class VacationController {
                         requestedDays,
                         usedRestDays: restDays,
                         extraWorkDays,
-                        totalDays: 25
+                        totalDays: userVacationDays
                     });
                 }
             }
