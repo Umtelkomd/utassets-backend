@@ -4,6 +4,7 @@ import { User } from '../entity/User';
 import { AppDataSource } from '../config/data-source';
 import { Between, In } from 'typeorm';
 import { slackNotificationService } from '../services/SlackNotificationService';
+import { calculateWorkingDays } from '../utils/dateUtils';
 
 export class VacationController {
     private vacationRepository = AppDataSource.getRepository(Vacation);
@@ -322,7 +323,7 @@ export class VacationController {
 
             // Validar días disponibles solo para días de descanso
             if (type === VacationType.REST_DAY) {
-                const requestedDays = Math.ceil((finalEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                const requestedDays = calculateWorkingDays(startDate, finalEndDate);
 
                 // Validar que el número de días solicitados sea razonable
                 if (requestedDays < 1 || requestedDays > 365) {
@@ -380,7 +381,6 @@ export class VacationController {
                     }
                 });
 
-                console.log('userVacationDays', userVacationDays, 'extraWorkDays', extraWorkDays, 'restDays', restDays);
 
                 const availableDays = userVacationDays + extraWorkDays - restDays;
 

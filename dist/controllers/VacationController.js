@@ -348,7 +348,7 @@ class VacationController {
                 });
                 if (requestedDays > availableDays) {
                     return res.status(400).json({
-                        message: `zNo tienes suficientes días disponibles. Solicitas ${requestedDays} días, pero solo tienes ${availableDays} días disponibles.`,
+                        message: `No tienes suficientes días disponibles. Solicitas ${requestedDays} días, pero solo tienes ${availableDays} días disponibles.`,
                         availableDays,
                         requestedDays,
                         usedRestDays: restDays,

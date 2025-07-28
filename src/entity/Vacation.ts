@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from './User';
+import { calculateWorkingDays } from '../utils/dateUtils';
 
 export enum VacationType {
     REST_DAY = 'rest_day',
@@ -87,12 +88,11 @@ export class Vacation {
     @UpdateDateColumn()
     updatedAt: Date;
 
-    // Método auxiliar para calcular el número de días en el rango
+    // Método auxiliar para calcular el número de días laborables en el rango (excluyendo fines de semana)
     get dayCount(): number {
         const start = new Date(this.startDate);
         const end = new Date(this.endDate);
-        const diffTime = end.getTime() - start.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        return calculateWorkingDays(start, end);
     }
 
     // Método auxiliar para verificar si una fecha está dentro del rango
