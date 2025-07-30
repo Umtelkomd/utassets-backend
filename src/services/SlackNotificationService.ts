@@ -2,6 +2,7 @@ import axios from 'axios';
 import { VacationType } from '../entity/Vacation';
 import { User } from '../entity/User';
 import { slackConfig } from '../config/slack.config';
+import { calculateWorkingDays } from '../utils/dateUtils';
 
 export interface VacationNotificationData {
     user: User;
@@ -28,7 +29,7 @@ export class SlackNotificationService {
             const { user, dates, type, description } = data;
 
             // Formatear las fechas
-            const formattedDates = this.formatDates(dates);
+            const formattedDates = this.formatDates(dates, type);
             const typeText = type === VacationType.REST_DAY ? 'día(s) de descanso' : 'día(s) extra trabajado(s)';
 
             // Crear el mensaje para Slack
@@ -119,7 +120,7 @@ export class SlackNotificationService {
         }
     }
 
-    private formatDates(dates: Date[]): string {
+    private formatDates(dates: Date[], type: VacationType): string {
         // Asegurar que todas las fechas sean objetos Date
         const validDates = dates.map(date => {
             if (date instanceof Date) {
@@ -138,28 +139,37 @@ export class SlackNotificationService {
                 month: 'long',
                 day: 'numeric'
             });
-        } else if (validDates.length === 2) {
-            const start = validDates[0].toLocaleDateString('es-ES', {
-                day: 'numeric',
-                month: 'short'
-            });
-            const end = validDates[validDates.length - 1].toLocaleDateString('es-ES', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-            });
-            return `${start} - ${end} (${validDates.length} días)`;
         } else {
-            const start = validDates[0].toLocaleDateString('es-ES', {
+            const startDate = validDates[0];
+            const endDate = validDates[validDates.length - 1];
+            
+            const start = startDate.toLocaleDateString('es-ES', {
                 day: 'numeric',
                 month: 'short'
             });
-            const end = validDates[validDates.length - 1].toLocaleDateString('es-ES', {
+            const end = endDate.toLocaleDateString('es-ES', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric'
             });
-            return `${start} - ${end} (${validDates.length} días)`;
+
+            // Calcular días laborables para mostrar información precisa
+            const workingDays = calculateWorkingDays(startDate, endDate);
+            const totalDays = validDates.length;
+
+            if (type === VacationType.REST_DAY) {
+                // Para días de descanso, mostrar días laborables que se descontarán
+                if (workingDays === totalDays) {
+                    // Todos los días son laborables
+                    return `${start} - ${end} (${workingDays} días laborables)`;
+                } else {
+                    // Hay fines de semana incluidos
+                    return `${start} - ${end} (${workingDays} días laborables de ${totalDays} días totales)`;
+                }
+            } else {
+                // Para días extra trabajados, mostrar días totales
+                return `${start} - ${end} (${totalDays} días trabajados)`;
+            }
         }
     }
 
@@ -175,7 +185,7 @@ export class SlackNotificationService {
         }
 
         try {
-            const formattedDates = this.formatDates(dates);
+            const formattedDates = this.formatDates(dates, type);
             const typeText = type === VacationType.REST_DAY ? 'día(s) de descanso' : 'día(s) extra trabajado(s)';
 
             const statusText = isFullyApproved
@@ -263,7 +273,7 @@ export class SlackNotificationService {
         }
 
         try {
-            const formattedDates = this.formatDates(dates);
+            const formattedDates = this.formatDates(dates, type);
             const typeText = type === VacationType.REST_DAY ? 'día(s) de descanso' : 'día(s) extra trabajado(s)';
 
             const message: any = {
