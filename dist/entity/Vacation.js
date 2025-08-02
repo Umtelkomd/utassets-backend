@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Vacation = exports.VacationStatus = exports.VacationType = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
+const dateUtils_1 = require("../utils/dateUtils");
 var VacationType;
 (function (VacationType) {
     VacationType["REST_DAY"] = "rest_day";
@@ -25,12 +26,11 @@ var VacationStatus;
     VacationStatus["REJECTED"] = "rejected"; // Rechazada
 })(VacationStatus || (exports.VacationStatus = VacationStatus = {}));
 let Vacation = class Vacation {
-    // Método auxiliar para calcular el número de días en el rango
+    // Método auxiliar para calcular el número de días laborables en el rango (excluyendo fines de semana)
     get dayCount() {
         const start = new Date(this.startDate);
         const end = new Date(this.endDate);
-        const diffTime = end.getTime() - start.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        return (0, dateUtils_1.calculateWorkingDays)(start, end);
     }
     // Método auxiliar para verificar si una fecha está dentro del rango
     containsDate(date) {
@@ -140,6 +140,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
     __metadata("design:type", Date)
 ], Vacation.prototype, "rejectedDate", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'working_days', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], Vacation.prototype, "workingDays", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

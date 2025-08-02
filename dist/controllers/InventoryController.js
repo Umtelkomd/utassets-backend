@@ -9,6 +9,7 @@ const data_source_1 = require("../config/data-source");
 const typeorm_1 = require("typeorm");
 class InventoryController {
     constructor() {
+        this.uploadService = upload_service_1.uploadService;
         const configService = new config_1.ConfigService({
             load: [() => ({
                     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
@@ -16,7 +17,7 @@ class InventoryController {
                     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
                 })]
         });
-        this.uploadService = new upload_service_1.UploadService(configService);
+        this.uploadService = upload_service_1.uploadService;
         // Vincular los métodos al contexto de la clase
         this.createItem = this.createItem.bind(this);
         this.updateItem = this.updateItem.bind(this);

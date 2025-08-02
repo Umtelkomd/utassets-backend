@@ -4,11 +4,11 @@ import { VehicleStatus, FuelType } from '../entity/Vehicle';
 import { AppDataSource } from '../config/data-source';
 import { User } from '../entity/User';
 import { In } from 'typeorm';
-import { UploadService } from '../upload/upload.service';
+import { uploadService } from '../upload/upload.service';
 import { ConfigService } from '@nestjs/config';
 
 class VehicleController {
-    private uploadService: UploadService;
+    private uploadService = uploadService;
 
     constructor() {
         const configService = new ConfigService({
@@ -19,7 +19,7 @@ class VehicleController {
             })]
         });
 
-        this.uploadService = new UploadService(configService);
+        this.uploadService = uploadService;
 
         // Vincular los métodos al contexto de la clase
         this.createVehicle = this.createVehicle.bind(this);

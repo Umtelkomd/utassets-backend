@@ -6,6 +6,7 @@ const User_1 = require("../entity/User");
 const data_source_1 = require("../config/data-source");
 const typeorm_1 = require("typeorm");
 const SlackNotificationService_1 = require("../services/SlackNotificationService");
+const dateUtils_1 = require("../utils/dateUtils");
 class VacationController {
     constructor() {
         this.vacationRepository = data_source_1.AppDataSource.getRepository(Vacation_1.Vacation);
@@ -141,7 +142,7 @@ class VacationController {
             let restDays = 0;
             let extraWorkDays = 0;
             vacations.forEach(vacation => {
-                const dayCount = vacation.dayCount;
+                const dayCount = vacation.workingDays || vacation.dayCount; // Usar workingDays si está disponible, fallback a dayCount
                 if (vacation.type === Vacation_1.VacationType.REST_DAY) {
                     restDays += dayCount;
                 }
@@ -202,7 +203,7 @@ class VacationController {
                 let restDays = 0;
                 let extraWorkDays = 0;
                 vacations.forEach(vacation => {
-                    const dayCount = vacation.dayCount;
+                    const dayCount = vacation.workingDays || vacation.dayCount; // Usar workingDays si está disponible, fallback a dayCount
                     if (vacation.type === Vacation_1.VacationType.REST_DAY) {
                         restDays += dayCount;
                     }
@@ -281,7 +282,7 @@ class VacationController {
             }
             // Validar días disponibles solo para días de descanso
             if (type === Vacation_1.VacationType.REST_DAY) {
-                const requestedDays = Math.ceil((finalEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                const requestedDays = (0, dateUtils_1.calculateWorkingDays)(startDate, finalEndDate);
                 // Validar que el número de días solicitados sea razonable
                 if (requestedDays < 1 || requestedDays > 365) {
                     return res.status(400).json({
@@ -324,7 +325,7 @@ class VacationController {
                 let restDays = 0;
                 let extraWorkDays = 0;
                 existingVacations.forEach(vacation => {
-                    const dayCount = vacation.dayCount;
+                    const dayCount = vacation.workingDays || vacation.dayCount; // Usar workingDays si está disponible, fallback a dayCount
                     if (vacation.type === Vacation_1.VacationType.REST_DAY) {
                         restDays += dayCount;
                     }
@@ -365,6 +366,8 @@ class VacationController {
                 initialStatus = Vacation_1.VacationStatus.FULLY_APPROVED;
                 isAutoApproved = true;
             }
+            // Calcular los días hábiles
+            const workingDays = (0, dateUtils_1.calculateWorkingDays)(startDate, finalEndDate);
             // Crear la vacación
             const vacationData = {
                 userId: parseInt(userId),
@@ -373,7 +376,8 @@ class VacationController {
                 type,
                 description,
                 status: initialStatus,
-                isApproved: isAutoApproved
+                isApproved: isAutoApproved,
+                workingDays
             };
             // Si es auto-aprobada, establecer las aprobaciones
             if (isAutoApproved && currentUserId) {
@@ -461,7 +465,7 @@ class VacationController {
                 });
             }
             // Calcular total de días eliminados
-            const totalDays = vacations.reduce((sum, vacation) => sum + vacation.dayCount, 0);
+            const totalDays = vacations.reduce((sum, vacation) => sum + (vacation.workingDays || vacation.dayCount), 0);
             // Eliminar todas las vacaciones
             await this.vacationRepository.remove(vacations);
             return res.json({
@@ -641,7 +645,7 @@ class VacationController {
                 type: vacation.type,
                 status: vacation.status,
                 description: vacation.description,
-                dayCount: vacation.dayCount,
+                dayCount: vacation.workingDays || vacation.dayCount,
                 firstApprovedBy: vacation.firstApprovedBy,
                 firstApprovedDate: vacation.firstApprovedDate,
                 secondApprovedBy: vacation.secondApprovedBy,
@@ -710,7 +714,7 @@ class VacationController {
             }
             const rejector = await this.userRepository.findOne({ where: { id: currentUserId } });
             // Calcular total de días rechazados
-            const totalDays = vacations.reduce((sum, vacation) => sum + vacation.dayCount, 0);
+            const totalDays = vacations.reduce((sum, vacation) => sum + (vacation.workingDays || vacation.dayCount), 0);
             // Marcar todas como rechazadas
             for (const vacation of vacations) {
                 vacation.status = Vacation_1.VacationStatus.REJECTED;
@@ -817,7 +821,7 @@ class VacationController {
                 vacation.isApproved = true;
                 vacation.approvedBy = approver;
                 vacation.approvedDate = new Date();
-                message = `Solicitud de vacación completamente aprobada. ${vacation.dayCount} día(s) de vacaciones confirmados.`;
+                message = `Solicitud de vacación completamente aprobada. ${vacation.workingDays || vacation.dayCount} día(s) de vacaciones confirmados.`;
             }
             await this.vacationRepository.save(vacation);
             const updatedVacation = await this.vacationRepository.findOne({
@@ -839,7 +843,7 @@ class VacationController {
                 message,
                 vacation: updatedVacation,
                 status: vacation.status,
-                dayCount: vacation.dayCount,
+                dayCount: vacation.workingDays || vacation.dayCount,
                 requiresSecondApproval: vacation.status === Vacation_1.VacationStatus.FIRST_APPROVED
             });
         }
@@ -892,8 +896,8 @@ class VacationController {
                 console.error('Error al enviar notificación de rechazo de Slack:', error);
             }
             return res.json({
-                message: `Solicitud de vacación de ${vacation.dayCount} día(s) rechazada correctamente`,
-                dayCount: vacation.dayCount,
+                message: `Solicitud de vacación de ${vacation.workingDays || vacation.dayCount} día(s) rechazada correctamente`,
+                dayCount: vacation.workingDays || vacation.dayCount,
                 reason: reason,
                 rejectedBy: rejector === null || rejector === void 0 ? void 0 : rejector.fullName,
                 rejectedDate: vacation.rejectedDate
@@ -977,7 +981,7 @@ class VacationController {
                     vacation.approvedBy = approver;
                     vacation.approvedDate = new Date();
                     secondApprovals++;
-                    totalDaysApproved += vacation.dayCount;
+                    totalDaysApproved += vacation.workingDays || vacation.dayCount;
                 }
             }
             await this.vacationRepository.save(vacations);
@@ -1088,6 +1092,56 @@ class VacationController {
         catch (error) {
             console.error('Error al actualizar días de vacaciones:', error);
             return res.status(500).json({ message: 'Error al actualizar días de vacaciones' });
+        }
+    }
+    // Método auxiliar para actualizar vacaciones existentes con días hábiles calculados
+    async updateExistingVacationsWorkingDays(req, res) {
+        try {
+            // Verificar autenticación y permisos de administrador
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+            const currentUserRole = req.userRole;
+            if (currentUserRole !== 'administrador') {
+                return res.status(403).json({ message: 'Solo los administradores pueden ejecutar esta operación' });
+            }
+            // Obtener todas las vacaciones que no tienen workingDays calculado (0 o undefined)
+            const vacations = await this.vacationRepository.find({
+                where: { workingDays: 0 }
+            });
+            if (vacations.length === 0) {
+                return res.json({
+                    message: 'Todas las vacaciones ya tienen los días hábiles calculados',
+                    updatedCount: 0
+                });
+            }
+            let updatedCount = 0;
+            for (const vacation of vacations) {
+                try {
+                    // Calcular días hábiles para cada vacación
+                    const workingDays = (0, dateUtils_1.calculateWorkingDays)(vacation.startDate, vacation.endDate);
+                    vacation.workingDays = workingDays;
+                    updatedCount++;
+                }
+                catch (error) {
+                    console.error(`Error calculando días hábiles para vacación ${vacation.id}:`, error instanceof Error ? error.message : error);
+                    // Continuar con la siguiente vacación en caso de error
+                }
+            }
+            // Guardar todas las vacaciones actualizadas
+            await this.vacationRepository.save(vacations);
+            return res.json({
+                message: `Se actualizaron ${updatedCount} vacaciones con sus días hábiles calculados`,
+                totalVacations: vacations.length,
+                updatedCount
+            });
+        }
+        catch (error) {
+            console.error('Error al actualizar vacaciones existentes:', error);
+            return res.status(500).json({
+                message: 'Error al actualizar vacaciones existentes',
+                error: error instanceof Error ? error.message : 'Error desconocido'
+            });
         }
     }
 }

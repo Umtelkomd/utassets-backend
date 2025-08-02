@@ -7,6 +7,7 @@ exports.slackNotificationService = exports.SlackNotificationService = void 0;
 const axios_1 = __importDefault(require("axios"));
 const Vacation_1 = require("../entity/Vacation");
 const slack_config_1 = require("../config/slack.config");
+const dateUtils_1 = require("../utils/dateUtils");
 class SlackNotificationService {
     constructor() {
         this.webhookUrl = slack_config_1.slackConfig.webhookUrl;
@@ -23,7 +24,7 @@ class SlackNotificationService {
         try {
             const { user, dates, type, description } = data;
             // Formatear las fechas
-            const formattedDates = this.formatDates(dates);
+            const formattedDates = this.formatDates(dates, type);
             const typeText = type === Vacation_1.VacationType.REST_DAY ? 'día(s) de descanso' : 'día(s) extra trabajado(s)';
             // Crear el mensaje para Slack
             const message = {
@@ -109,7 +110,7 @@ class SlackNotificationService {
             // No lanzamos el error para que no afecte la creación de la vacación
         }
     }
-    formatDates(dates) {
+    formatDates(dates, type) {
         // Asegurar que todas las fechas sean objetos Date
         const validDates = dates.map(date => {
             if (date instanceof Date) {
@@ -130,29 +131,36 @@ class SlackNotificationService {
                 day: 'numeric'
             });
         }
-        else if (validDates.length === 2) {
-            const start = validDates[0].toLocaleDateString('es-ES', {
-                day: 'numeric',
-                month: 'short'
-            });
-            const end = validDates[validDates.length - 1].toLocaleDateString('es-ES', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-            });
-            return `${start} - ${end} (${validDates.length} días)`;
-        }
         else {
-            const start = validDates[0].toLocaleDateString('es-ES', {
+            const startDate = validDates[0];
+            const endDate = validDates[validDates.length - 1];
+            const start = startDate.toLocaleDateString('es-ES', {
                 day: 'numeric',
                 month: 'short'
             });
-            const end = validDates[validDates.length - 1].toLocaleDateString('es-ES', {
+            const end = endDate.toLocaleDateString('es-ES', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric'
             });
-            return `${start} - ${end} (${validDates.length} días)`;
+            // Calcular días laborables para mostrar información precisa
+            const workingDays = (0, dateUtils_1.calculateWorkingDays)(startDate, endDate);
+            const totalDays = validDates.length;
+            if (type === Vacation_1.VacationType.REST_DAY) {
+                // Para días de descanso, mostrar días laborables que se descontarán
+                if (workingDays === totalDays) {
+                    // Todos los días son laborables
+                    return `${start} - ${end} (${workingDays} días laborables)`;
+                }
+                else {
+                    // Hay fines de semana incluidos
+                    return `${start} - ${end} (${workingDays} días laborables de ${totalDays} días totales)`;
+                }
+            }
+            else {
+                // Para días extra trabajados, mostrar días totales
+                return `${start} - ${end} (${totalDays} días trabajados)`;
+            }
         }
     }
     async sendVacationApprovedNotification(user, dates, type, approverName, isFullyApproved) {
@@ -165,7 +173,7 @@ class SlackNotificationService {
             return;
         }
         try {
-            const formattedDates = this.formatDates(dates);
+            const formattedDates = this.formatDates(dates, type);
             const typeText = type === Vacation_1.VacationType.REST_DAY ? 'día(s) de descanso' : 'día(s) extra trabajado(s)';
             const statusText = isFullyApproved
                 ? '✅ *SOLICITUD COMPLETAMENTE APROBADA*'
@@ -248,7 +256,7 @@ class SlackNotificationService {
             return;
         }
         try {
-            const formattedDates = this.formatDates(dates);
+            const formattedDates = this.formatDates(dates, type);
             const typeText = type === Vacation_1.VacationType.REST_DAY ? 'día(s) de descanso' : 'día(s) extra trabajado(s)';
             const message = {
                 text: '❌ Solicitud de Vacaciones Rechazada',

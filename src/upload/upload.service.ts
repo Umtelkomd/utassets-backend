@@ -1,6 +1,15 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 
+// Definir tipo para archivo
+interface UploadFile {
+    path: string;
+    filename?: string;
+    originalname?: string;
+    mimetype?: string;
+    size?: number;
+}
+
 // Configurar Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -10,7 +19,7 @@ cloudinary.config({
 
 export class UploadService {
     // Método para subir archivos a Cloudinary
-    async uploadImage(file: Express.Multer.File, folder?: string): Promise<any> {
+    async uploadImage(file: UploadFile, folder?: string): Promise<any> {
         try {
             const result = await cloudinary.uploader.upload(file.path, {
                 folder: folder || 'uploads',
@@ -43,7 +52,7 @@ export class UploadService {
     }
 
     // Método para actualizar imagen (eliminar anterior y subir nueva)
-    async updateImage(file: Express.Multer.File, oldPublicId?: string, folder?: string): Promise<any> {
+    async updateImage(file: UploadFile, oldPublicId?: string, folder?: string): Promise<any> {
         try {
             // Si hay una imagen anterior, eliminarla
             if (oldPublicId) {

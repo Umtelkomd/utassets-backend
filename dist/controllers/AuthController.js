@@ -41,13 +41,12 @@ const UserRepository_1 = require("../repositories/UserRepository");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = require("../entity/User");
 const upload_service_1 = require("../upload/upload.service");
-const config_1 = require("@nestjs/config");
 const JWT_SECRET = process.env.JWT_SECRET || 'utassets_secret_key_2024_secure_token';
 const JWT_EXPIRES_IN = '90d';
 class AuthController {
     constructor() {
-        const configService = new config_1.ConfigService();
-        this.uploadService = new upload_service_1.UploadService(configService);
+        this.uploadService = upload_service_1.uploadService;
+        // ConfigService ya no es necesario para UploadService
     }
     async login(req, res) {
         try {

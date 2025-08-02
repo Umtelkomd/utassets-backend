@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
 import { inventoryRepository } from '../repositories/InventoryRepository';
-import { UploadService } from '../upload/upload.service';
+import { uploadService } from '../upload/upload.service';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../entity/User';
 import { AppDataSource } from '../config/data-source';
 import { In } from 'typeorm';
 
 class InventoryController {
-    private uploadService: UploadService;
+    private uploadService = uploadService;
 
     constructor() {
         const configService = new ConfigService({
@@ -18,7 +18,7 @@ class InventoryController {
             })]
         });
 
-        this.uploadService = new UploadService(configService);
+        this.uploadService = uploadService;
 
         // Vincular los métodos al contexto de la clase
         this.createItem = this.createItem.bind(this);

@@ -5,8 +5,9 @@ const HousingRepository_1 = require("../repositories/HousingRepository");
 const upload_service_1 = require("../upload/upload.service");
 class HousingController {
     constructor(configService) {
+        this.uploadService = upload_service_1.uploadService;
         this.repository = new HousingRepository_1.HousingRepository();
-        this.uploadService = new upload_service_1.UploadService(configService);
+        // ConfigService ya no es necesario para UploadService
     }
     // Obtener todas las viviendas
     async getAll(req, res) {

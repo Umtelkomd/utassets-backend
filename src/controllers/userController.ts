@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { UserRole } from '../entity/User';
 import { AppDataSource } from '../config/data-source';
-import { UploadService } from '../upload/upload.service';
+import { uploadService } from '../upload/upload.service';
 import { ConfigService } from '@nestjs/config';
 import { emailService } from '../services/EmailService';
 import { v4 as uuidv4 } from 'uuid';
@@ -12,11 +12,10 @@ import fs from 'fs';
 
 export class UserController {
     private userRepository = AppDataSource.getRepository(User);
-    private uploadService: UploadService;
+    private uploadService = uploadService;
 
     constructor() {
-        const configService = new ConfigService();
-        this.uploadService = new UploadService(configService);
+        // ConfigService ya no es necesario para UploadService
     }
 
     async createUser(req: Request, res: Response): Promise<Response> {

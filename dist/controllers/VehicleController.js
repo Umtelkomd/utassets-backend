@@ -10,6 +10,7 @@ const upload_service_1 = require("../upload/upload.service");
 const config_1 = require("@nestjs/config");
 class VehicleController {
     constructor() {
+        this.uploadService = upload_service_1.uploadService;
         this.createVehicle = async (req, res) => {
             try {
                 const vehicleData = req.body;
@@ -149,7 +150,7 @@ class VehicleController {
                     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
                 })]
         });
-        this.uploadService = new upload_service_1.UploadService(configService);
+        this.uploadService = upload_service_1.uploadService;
         // Vincular los métodos al contexto de la clase
         this.createVehicle = this.createVehicle.bind(this);
         this.updateVehicle = this.updateVehicle.bind(this);

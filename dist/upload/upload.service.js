@@ -1,64 +1,65 @@
 "use strict";
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UploadService = void 0;
-const common_1 = require("@nestjs/common");
+exports.uploadService = exports.UploadService = void 0;
 const cloudinary_1 = require("cloudinary");
-const config_1 = require("@nestjs/config");
-let UploadService = class UploadService {
-    constructor(configService) {
-        this.configService = configService;
-        cloudinary_1.v2.config({
-            cloud_name: this.configService.get('CLOUDINARY_CLOUD_NAME'),
-            api_key: this.configService.get('CLOUDINARY_API_KEY'),
-            api_secret: this.configService.get('CLOUDINARY_API_SECRET'),
-        });
-    }
-    async uploadImage(file, entityType) {
+const fs_1 = __importDefault(require("fs"));
+// Configurar Cloudinary
+cloudinary_1.v2.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+class UploadService {
+    // Método para subir archivos a Cloudinary
+    async uploadImage(file, folder) {
         try {
-            // Convertir el buffer a base64 para Cloudinary
-            const b64 = Buffer.from(file.buffer).toString('base64');
-            const dataURI = `data:${file.mimetype};base64,${b64}`;
-            const result = await cloudinary_1.v2.uploader.upload(dataURI, {
-                folder: `utassets/${entityType}`,
-                transformation: [
-                    { width: 800, height: 600, crop: 'fill' },
-                    { quality: 'auto' },
-                    { format: 'webp' }
-                ],
-                public_id: `${entityType}_${Date.now()}`,
+            const result = await cloudinary_1.v2.uploader.upload(file.path, {
+                folder: folder || 'uploads',
+                resource_type: 'auto'
             });
-            return {
-                url: result.secure_url,
-                public_id: result.public_id,
-                width: result.width,
-                height: result.height,
-            };
+            // Eliminar archivo temporal
+            if (fs_1.default.existsSync(file.path)) {
+                fs_1.default.unlinkSync(file.path);
+            }
+            return result;
         }
         catch (error) {
-            throw new Error(`Error al subir a Cloudinary: ${error.message}`);
+            // Eliminar archivo temporal en caso de error
+            if (fs_1.default.existsSync(file.path)) {
+                fs_1.default.unlinkSync(file.path);
+            }
+            throw error;
         }
     }
+    // Método para eliminar archivos de Cloudinary
     async deleteImage(publicId) {
         try {
             const result = await cloudinary_1.v2.uploader.destroy(publicId);
             return result;
         }
         catch (error) {
-            throw new Error(`Error al eliminar de Cloudinary: ${error.message}`);
+            throw error;
         }
     }
-};
+    // Método para actualizar imagen (eliminar anterior y subir nueva)
+    async updateImage(file, oldPublicId, folder) {
+        try {
+            // Si hay una imagen anterior, eliminarla
+            if (oldPublicId) {
+                await this.deleteImage(oldPublicId);
+            }
+            // Subir nueva imagen
+            const result = await this.uploadImage(file, folder);
+            return result;
+        }
+        catch (error) {
+            throw error;
+        }
+    }
+}
 exports.UploadService = UploadService;
-exports.UploadService = UploadService = __decorate([
-    (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [config_1.ConfigService])
-], UploadService);
+// Exportar instancia singleton
+exports.uploadService = new UploadService();

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { userRepository } from '../repositories/UserRepository';
 import jwt from 'jsonwebtoken';
 import { User, UserRole } from '../entity/User';
-import { UploadService } from '../upload/upload.service';
+import { uploadService } from '../upload/upload.service';
 import { ConfigService } from '@nestjs/config';
 
 // Importar el tipo UserCreateDTO
@@ -12,11 +12,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'utassets_secret_key_2024_secure_to
 const JWT_EXPIRES_IN = '90d';
 
 export class AuthController {
-    private uploadService: UploadService;
+    private uploadService = uploadService;
 
     constructor() {
-        const configService = new ConfigService();
-        this.uploadService = new UploadService(configService);
+        // ConfigService ya no es necesario para UploadService
     }
 
     async login(req: Request, res: Response): Promise<void> {

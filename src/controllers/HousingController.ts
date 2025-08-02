@@ -1,15 +1,15 @@
 import { Request, Response } from 'express';
 import { HousingRepository } from '../repositories/HousingRepository';
-import { UploadService } from '../upload/upload.service';
+import { uploadService } from '../upload/upload.service';
 import { ConfigService } from '@nestjs/config';
 
 export class HousingController {
     private repository: HousingRepository;
-    private uploadService: UploadService;
+    private uploadService = uploadService;
 
     constructor(configService: ConfigService) {
         this.repository = new HousingRepository();
-        this.uploadService = new UploadService(configService);
+        // ConfigService ya no es necesario para UploadService
     }
 
     // Obtener todas las viviendas

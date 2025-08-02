@@ -42,15 +42,14 @@ const bcrypt = __importStar(require("bcrypt"));
 const User_2 = require("../entity/User");
 const data_source_1 = require("../config/data-source");
 const upload_service_1 = require("../upload/upload.service");
-const config_1 = require("@nestjs/config");
 const EmailService_1 = require("../services/EmailService");
 const uuid_1 = require("uuid");
 const fs_1 = __importDefault(require("fs"));
 class UserController {
     constructor() {
         this.userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
-        const configService = new config_1.ConfigService();
-        this.uploadService = new upload_service_1.UploadService(configService);
+        this.uploadService = upload_service_1.uploadService;
+        // ConfigService ya no es necesario para UploadService
     }
     async createUser(req, res) {
         try {

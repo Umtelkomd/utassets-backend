@@ -21,6 +21,8 @@ router.get('/', controller.getAllVacations.bind(controller));
 router.get('/users', controller.getAllUsersAvailableDays.bind(controller));
 // Ruta para ajustar días de vacaciones (debe ir antes que las rutas con parámetros dinámicos)
 router.put('/users/:userId/vacation-days', controller.updateUserVacationDays.bind(controller));
+// Ruta para actualizar vacaciones existentes con días hábiles calculados
+router.put('/update-working-days', controller.updateExistingVacationsWorkingDays.bind(controller));
 // Rutas para gestión de solicitudes pendientes
 router.get('/pending', controller.getPendingVacations.bind(controller));
 router.get('/pending/grouped', controller.getPendingVacationsGrouped.bind(controller));
