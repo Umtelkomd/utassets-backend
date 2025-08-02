@@ -158,7 +158,7 @@ export class VacationController {
             let extraWorkDays = 0;
 
             vacations.forEach(vacation => {
-                const dayCount = vacation.dayCount;
+                const dayCount = vacation.workingDays || vacation.dayCount; // Usar workingDays si está disponible, fallback a dayCount
                 if (vacation.type === VacationType.REST_DAY) {
                     restDays += dayCount;
                 } else {
@@ -227,7 +227,7 @@ export class VacationController {
                     let extraWorkDays = 0;
 
                     vacations.forEach(vacation => {
-                        const dayCount = vacation.dayCount;
+                        const dayCount = vacation.workingDays || vacation.dayCount; // Usar workingDays si está disponible, fallback a dayCount
                         if (vacation.type === VacationType.REST_DAY) {
                             restDays += dayCount;
                         } else {
@@ -373,7 +373,7 @@ export class VacationController {
                 let extraWorkDays = 0;
 
                 existingVacations.forEach(vacation => {
-                    const dayCount = vacation.dayCount;
+                    const dayCount = vacation.workingDays || vacation.dayCount; // Usar workingDays si está disponible, fallback a dayCount
                     if (vacation.type === VacationType.REST_DAY) {
                         restDays += dayCount;
                     } else {
@@ -420,6 +420,9 @@ export class VacationController {
                 isAutoApproved = true;
             }
 
+            // Calcular los días hábiles
+            const workingDays = calculateWorkingDays(startDate, finalEndDate);
+
             // Crear la vacación
             const vacationData: Partial<Vacation> = {
                 userId: parseInt(userId),
@@ -428,7 +431,8 @@ export class VacationController {
                 type,
                 description,
                 status: initialStatus,
-                isApproved: isAutoApproved
+                isApproved: isAutoApproved,
+                workingDays
             };
 
             // Si es auto-aprobada, establecer las aprobaciones
@@ -529,7 +533,7 @@ export class VacationController {
             }
 
             // Calcular total de días eliminados
-            const totalDays = vacations.reduce((sum, vacation) => sum + vacation.dayCount, 0);
+            const totalDays = vacations.reduce((sum, vacation) => sum + (vacation.workingDays || vacation.dayCount), 0);
 
             // Eliminar todas las vacaciones
             await this.vacationRepository.remove(vacations);
@@ -728,7 +732,7 @@ export class VacationController {
                 type: vacation.type,
                 status: vacation.status,
                 description: vacation.description,
-                dayCount: vacation.dayCount,
+                dayCount: vacation.workingDays || vacation.dayCount,
                 firstApprovedBy: vacation.firstApprovedBy,
                 firstApprovedDate: vacation.firstApprovedDate,
                 secondApprovedBy: vacation.secondApprovedBy,
@@ -808,7 +812,7 @@ export class VacationController {
             const rejector = await this.userRepository.findOne({ where: { id: currentUserId } });
 
             // Calcular total de días rechazados
-            const totalDays = vacations.reduce((sum, vacation) => sum + vacation.dayCount, 0);
+            const totalDays = vacations.reduce((sum, vacation) => sum + (vacation.workingDays || vacation.dayCount), 0);
 
             // Marcar todas como rechazadas
             for (const vacation of vacations) {
@@ -939,7 +943,7 @@ export class VacationController {
                 vacation.isApproved = true;
                 vacation.approvedBy = approver;
                 vacation.approvedDate = new Date();
-                message = `Solicitud de vacación completamente aprobada. ${vacation.dayCount} día(s) de vacaciones confirmados.`;
+                message = `Solicitud de vacación completamente aprobada. ${vacation.workingDays || vacation.dayCount} día(s) de vacaciones confirmados.`;
             }
 
             await this.vacationRepository.save(vacation);
@@ -971,7 +975,7 @@ export class VacationController {
                 message,
                 vacation: updatedVacation,
                 status: vacation.status,
-                dayCount: vacation.dayCount,
+                dayCount: vacation.workingDays || vacation.dayCount,
                 requiresSecondApproval: vacation.status === VacationStatus.FIRST_APPROVED
             });
         } catch (error) {
@@ -1041,8 +1045,8 @@ export class VacationController {
             }
 
             return res.json({
-                message: `Solicitud de vacación de ${vacation.dayCount} día(s) rechazada correctamente`,
-                dayCount: vacation.dayCount,
+                message: `Solicitud de vacación de ${vacation.workingDays || vacation.dayCount} día(s) rechazada correctamente`,
+                dayCount: vacation.workingDays || vacation.dayCount,
                 reason: reason,
                 rejectedBy: rejector?.fullName,
                 rejectedDate: vacation.rejectedDate
@@ -1137,7 +1141,7 @@ export class VacationController {
                     vacation.approvedBy = approver;
                     vacation.approvedDate = new Date();
                     secondApprovals++;
-                    totalDaysApproved += vacation.dayCount;
+                    totalDaysApproved += vacation.workingDays || vacation.dayCount;
                 }
             }
 
@@ -1274,6 +1278,62 @@ export class VacationController {
         } catch (error) {
             console.error('Error al actualizar días de vacaciones:', error);
             return res.status(500).json({ message: 'Error al actualizar días de vacaciones' });
+        }
+    }
+
+    // Método auxiliar para actualizar vacaciones existentes con días hábiles calculados
+    async updateExistingVacationsWorkingDays(req: Request, res: Response): Promise<Response> {
+        try {
+            // Verificar autenticación y permisos de administrador
+            if (!req.user || !req.userId) {
+                return res.status(401).json({ message: 'Usuario no autenticado' });
+            }
+
+            const currentUserRole = req.userRole;
+            if (currentUserRole !== 'administrador') {
+                return res.status(403).json({ message: 'Solo los administradores pueden ejecutar esta operación' });
+            }
+
+            // Obtener todas las vacaciones que no tienen workingDays calculado (0 o undefined)
+            const vacations = await this.vacationRepository.find({
+                where: { workingDays: 0 }
+            });
+
+            if (vacations.length === 0) {
+                return res.json({
+                    message: 'Todas las vacaciones ya tienen los días hábiles calculados',
+                    updatedCount: 0
+                });
+            }
+
+            let updatedCount = 0;
+
+            for (const vacation of vacations) {
+                try {
+                    // Calcular días hábiles para cada vacación
+                    const workingDays = calculateWorkingDays(vacation.startDate, vacation.endDate);
+                    vacation.workingDays = workingDays;
+                    updatedCount++;
+                } catch (error) {
+                    console.error(`Error calculando días hábiles para vacación ${vacation.id}:`, error instanceof Error ? error.message : error);
+                    // Continuar con la siguiente vacación en caso de error
+                }
+            }
+
+            // Guardar todas las vacaciones actualizadas
+            await this.vacationRepository.save(vacations);
+
+            return res.json({
+                message: `Se actualizaron ${updatedCount} vacaciones con sus días hábiles calculados`,
+                totalVacations: vacations.length,
+                updatedCount
+            });
+        } catch (error) {
+            console.error('Error al actualizar vacaciones existentes:', error);
+            return res.status(500).json({ 
+                message: 'Error al actualizar vacaciones existentes',
+                error: error instanceof Error ? error.message : 'Error desconocido'
+            });
         }
     }
 }

@@ -82,6 +82,9 @@ export class Vacation {
     @Column({ type: 'timestamp', nullable: true })
     rejectedDate?: Date;
 
+    @Column({ name: 'working_days', type: 'int', default: 0 })
+    workingDays: number;
+
     @CreateDateColumn()
     createdAt: Date;
 
