@@ -326,6 +326,12 @@ export class VacationController {
                 const requestedDays = calculateWorkingDays(startDate, finalEndDate);
 
                 // Validar que el número de días solicitados sea razonable
+                if (requestedDays === 0) {
+                    return res.status(400).json({
+                        message: `El rango de fechas seleccionado no incluye días laborales. Por favor, selecciona un período que contenga al menos un día hábil (lunes a viernes).`
+                    });
+                }
+                
                 if (requestedDays < 1 || requestedDays > 365) {
                     return res.status(400).json({
                         message: `El número de días solicitados (${requestedDays}) no es válido. Debe estar entre 1 y 365 días.`
