@@ -4,7 +4,7 @@ import { User } from '../entity/User';
 import { AppDataSource } from '../config/data-source';
 import { Between, In } from 'typeorm';
 import { slackNotificationService } from '../services/SlackNotificationService';
-import { calculateWorkingDays } from '../utils/dateUtils';
+import { calculateWorkingDays, calculateSaturdays, isSaturday } from '../utils/dateUtils';
 
 export class VacationController {
     private vacationRepository = AppDataSource.getRepository(Vacation);
@@ -426,8 +426,45 @@ export class VacationController {
                 isAutoApproved = true;
             }
 
-            // Calcular los días hábiles
-            const workingDays = calculateWorkingDays(startDate, finalEndDate);
+            // Validar que para días extra solo se seleccionen sábados
+            if (type === VacationType.EXTRA_WORK_DAY) {
+                const validateOnlySaturdays = (start: Date, end: Date): boolean => {
+                    const current = new Date(start);
+                    while (current <= end) {
+                        if (!isSaturday(current)) {
+                            return false; // No es sábado
+                        }
+                        current.setDate(current.getDate() + 1);
+                    }
+                    return true;
+                };
+
+                if (!validateOnlySaturdays(startDate, finalEndDate)) {
+                    return res.status(400).json({
+                        message: 'Para días de trabajo extra solo se pueden seleccionar sábados. Por favor, selecciona únicamente fechas que sean sábados.'
+                    });
+                }
+
+                // Validar que no sea el sábado actual
+                const today = new Date();
+                const isToday = startDate.toDateString() === today.toDateString();
+                
+                if (isToday && isSaturday(today)) {
+                    return res.status(400).json({
+                        message: 'No puedes seleccionar el sábado actual. Por favor, selecciona un sábado futuro.'
+                    });
+                }
+            }
+
+            // Calcular los días según el tipo de vacación
+            let workingDays: number;
+            if (type === VacationType.EXTRA_WORK_DAY) {
+                // Para días extra, contar solo los sábados
+                workingDays = calculateSaturdays(startDate, finalEndDate);
+            } else {
+                // Para días de descanso, usar días laborales normales
+                workingDays = calculateWorkingDays(startDate, finalEndDate);
+            }
 
             // Crear la vacación
             const vacationData: Partial<Vacation> = {

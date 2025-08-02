@@ -73,4 +73,37 @@ export function calculateWorkingDaysExcluding(
 export function isWorkingDay(date: Date): boolean {
     const dayOfWeek = date.getDay();
     return dayOfWeek !== 0 && dayOfWeek !== 6; // No es domingo ni sábado
+}
+
+/**
+ * Verifica si una fecha es sábado
+ * @param date - Fecha a verificar
+ * @returns true si es sábado
+ */
+export function isSaturday(date: Date): boolean {
+    return date.getDay() === 6;
+}
+
+/**
+ * Calcula el número de sábados entre dos fechas (inclusive)
+ * @param startDate - Fecha de inicio
+ * @param endDate - Fecha de fin
+ * @returns Número de sábados en el rango
+ */
+export function calculateSaturdays(startDate: Date, endDate: Date): number {
+    if (startDate > endDate) {
+        throw new Error('La fecha de inicio no puede ser posterior a la fecha de fin');
+    }
+
+    let count = 0;
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+        if (currentDate.getDay() === 6) { // Es sábado
+            count++;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return count;
 } 
