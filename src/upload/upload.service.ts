@@ -1,50 +1,63 @@
-import { Injectable } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
-import { ConfigService } from '@nestjs/config';
+import fs from 'fs';
 
-@Injectable()
+// Configurar Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 export class UploadService {
-    constructor(private configService: ConfigService) {
-        cloudinary.config({
-            cloud_name: this.configService.get('CLOUDINARY_CLOUD_NAME'),
-            api_key: this.configService.get('CLOUDINARY_API_KEY'),
-            api_secret: this.configService.get('CLOUDINARY_API_SECRET'),
-        });
-    }
-
-    async uploadImage(file: Express.Multer.File, entityType: string) {
+    // Método para subir archivos a Cloudinary
+    async uploadImage(file: Express.Multer.File, folder?: string): Promise<any> {
         try {
-            // Convertir el buffer a base64 para Cloudinary
-            const b64 = Buffer.from(file.buffer).toString('base64');
-            const dataURI = `data:${file.mimetype};base64,${b64}`;
-
-            const result = await cloudinary.uploader.upload(dataURI, {
-                folder: `utassets/${entityType}`,
-                transformation: [
-                    { width: 800, height: 600, crop: 'fill' },
-                    { quality: 'auto' },
-                    { format: 'webp' }
-                ],
-                public_id: `${entityType}_${Date.now()}`,
+            const result = await cloudinary.uploader.upload(file.path, {
+                folder: folder || 'uploads',
+                resource_type: 'auto'
             });
 
-            return {
-                url: result.secure_url,
-                public_id: result.public_id,
-                width: result.width,
-                height: result.height,
-            };
-        } catch (error: any) {
-            throw new Error(`Error al subir a Cloudinary: ${error.message}`);
+            // Eliminar archivo temporal
+            if (fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
+
+            return result;
+        } catch (error) {
+            // Eliminar archivo temporal en caso de error
+            if (fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
+            throw error;
         }
     }
 
-    async deleteImage(publicId: string) {
+    // Método para eliminar archivos de Cloudinary
+    async deleteImage(publicId: string): Promise<any> {
         try {
             const result = await cloudinary.uploader.destroy(publicId);
             return result;
-        } catch (error: any) {
-            throw new Error(`Error al eliminar de Cloudinary: ${error.message}`);
+        } catch (error) {
+            throw error;
         }
     }
-} 
+
+    // Método para actualizar imagen (eliminar anterior y subir nueva)
+    async updateImage(file: Express.Multer.File, oldPublicId?: string, folder?: string): Promise<any> {
+        try {
+            // Si hay una imagen anterior, eliminarla
+            if (oldPublicId) {
+                await this.deleteImage(oldPublicId);
+            }
+
+            // Subir nueva imagen
+            const result = await this.uploadImage(file, folder);
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }
+}
+
+// Exportar instancia singleton
+export const uploadService = new UploadService(); 
