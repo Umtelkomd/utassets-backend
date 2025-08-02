@@ -284,6 +284,11 @@ class VacationController {
             if (type === Vacation_1.VacationType.REST_DAY) {
                 const requestedDays = (0, dateUtils_1.calculateWorkingDays)(startDate, finalEndDate);
                 // Validar que el número de días solicitados sea razonable
+                if (requestedDays === 0) {
+                    return res.status(400).json({
+                        message: `El rango de fechas seleccionado no incluye días laborales. Por favor, selecciona un período que contenga al menos un día hábil (lunes a viernes).`
+                    });
+                }
                 if (requestedDays < 1 || requestedDays > 365) {
                     return res.status(400).json({
                         message: `El número de días solicitados (${requestedDays}) no es válido. Debe estar entre 1 y 365 días.`
@@ -366,8 +371,42 @@ class VacationController {
                 initialStatus = Vacation_1.VacationStatus.FULLY_APPROVED;
                 isAutoApproved = true;
             }
-            // Calcular los días hábiles
-            const workingDays = (0, dateUtils_1.calculateWorkingDays)(startDate, finalEndDate);
+            // Validar que para días extra solo se seleccionen sábados
+            if (type === Vacation_1.VacationType.EXTRA_WORK_DAY) {
+                const validateOnlySaturdays = (start, end) => {
+                    const current = new Date(start);
+                    while (current <= end) {
+                        if (!(0, dateUtils_1.isSaturday)(current)) {
+                            return false; // No es sábado
+                        }
+                        current.setDate(current.getDate() + 1);
+                    }
+                    return true;
+                };
+                if (!validateOnlySaturdays(startDate, finalEndDate)) {
+                    return res.status(400).json({
+                        message: 'Para días de trabajo extra solo se pueden seleccionar sábados. Por favor, selecciona únicamente fechas que sean sábados.'
+                    });
+                }
+                // Validar que no sea el sábado actual
+                const today = new Date();
+                const isToday = startDate.toDateString() === today.toDateString();
+                if (isToday && (0, dateUtils_1.isSaturday)(today)) {
+                    return res.status(400).json({
+                        message: 'No puedes seleccionar el sábado actual. Por favor, selecciona un sábado futuro.'
+                    });
+                }
+            }
+            // Calcular los días según el tipo de vacación
+            let workingDays;
+            if (type === Vacation_1.VacationType.EXTRA_WORK_DAY) {
+                // Para días extra, contar solo los sábados
+                workingDays = (0, dateUtils_1.calculateSaturdays)(startDate, finalEndDate);
+            }
+            else {
+                // Para días de descanso, usar días laborales normales
+                workingDays = (0, dateUtils_1.calculateWorkingDays)(startDate, finalEndDate);
+            }
             // Crear la vacación
             const vacationData = {
                 userId: parseInt(userId),
