@@ -50,6 +50,9 @@ router.get('/google/callback',
 router.get('/me', authMiddleware, authController.getCurrentUser.bind(authController));
 router.post('/change-password', authMiddleware, authController.changePassword.bind(authController));
 
+// ✨ NUEVO: Generar token de redirección para usuario ya autenticado (SSO)
+router.post('/generate-redirect-token', authMiddleware, authController.generateRedirectToken.bind(authController));
+
 // Rutas de administración (solo administradores)
 router.get('/users', authMiddleware, authController.getAllUsers.bind(authController));
 router.get('/users/:id', isAdmin, authController.getUserById.bind(authController));

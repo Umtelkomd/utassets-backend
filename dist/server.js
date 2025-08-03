@@ -51,8 +51,12 @@ createUploadDirectories();
 app.use((0, cors_1.default)({
     origin: [
         'https://glassfaser-utk.de',
-        'http://localhost:3000'
-    ],
+        'http://localhost:3000',
+        'http://localhost:5173', // CostControl frontend (Vite)
+        'https://costcontrol-frontend.onrender.com', // CostControl frontend (producción)
+        process.env.COSTCONTROL_FRONTEND_URL,
+        process.env.UTASSETS_FRONTEND_URL
+    ].filter((url) => typeof url === 'string' && url.length > 0),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true // Habilitar credentials para cookies

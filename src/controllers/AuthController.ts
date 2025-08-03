@@ -5,6 +5,7 @@ import { User, UserRole } from '../entity/User';
 import { uploadService } from '../upload/upload.service';
 import { ConfigService } from '@nestjs/config';
 
+
 // Importar el tipo UserCreateDTO
 import { UserCreateDTO } from '../repositories/UserRepository';
 
@@ -748,6 +749,70 @@ export class AuthController {
             } else {
                 res.status(500).json({ message: 'Error interno del servidor' });
             }
+        }
+    }
+
+    // ✨ NUEVO: Generar token de redirección para usuario ya autenticado
+    async generateRedirectToken(req: Request, res: Response): Promise<void> {
+        try {
+            const user = (req as any).user; // Usuario viene del middleware de autenticación
+            const redirectUrl = req.query.redirect as string || req.body.redirect;
+
+            if (!redirectUrl) {
+                res.status(400).json({ 
+                    message: 'URL de redirección requerida',
+                    error: 'REDIRECT_URL_REQUIRED'
+                });
+                return;
+            }
+
+            console.log('🔄 [UTAssets] Generando token de redirección para usuario ya autenticado:', user.email);
+            console.log('🎯 [UTAssets] URL de redirección:', redirectUrl);
+
+            // Verificar que el usuario sigue activo
+            const currentUser = await userRepository.getUserById(user.id);
+            if (!currentUser || !currentUser.isActive) {
+                res.status(401).json({ 
+                    message: 'Usuario no encontrado o inactivo',
+                    error: 'USER_INACTIVE'
+                });
+                return;
+            }
+
+            // Generar token JWT
+            const token = jwt.sign(
+                {
+                    id: currentUser.id,
+                    username: currentUser.username,
+                    email: currentUser.email,
+                    role: currentUser.role
+                },
+                JWT_SECRET,
+                { expiresIn: JWT_EXPIRES_IN }
+            );
+
+            console.log('✅ [UTAssets] Token generado exitosamente para:', currentUser.email);
+
+            // Devolver el token y la URL completa
+            const redirectUrlWithToken = `${redirectUrl}?token=${token}`;
+            
+            res.status(200).json({
+                token,
+                redirectUrl: redirectUrlWithToken,
+                user: {
+                    id: currentUser.id,
+                    email: currentUser.email,
+                    fullName: currentUser.fullName,
+                    role: currentUser.role
+                }
+            });
+
+        } catch (error) {
+            console.error('❌ [UTAssets] Error generando token de redirección:', error);
+            res.status(500).json({ 
+                message: 'Error interno del servidor',
+                error: 'INTERNAL_SERVER_ERROR'
+            });
         }
     }
 }

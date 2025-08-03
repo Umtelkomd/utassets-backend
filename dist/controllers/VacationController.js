@@ -373,10 +373,16 @@ class VacationController {
             }
             // Validar que para días extra solo se seleccionen sábados
             if (type === Vacation_1.VacationType.EXTRA_WORK_DAY) {
+                console.log('🚨 DEBUG: Validando días extra - tipo:', type);
+                console.log('🚨 DEBUG: Fecha inicio:', startDate, 'Día de la semana:', startDate.getDay());
+                console.log('🚨 DEBUG: Fecha fin:', finalEndDate, 'Día de la semana:', finalEndDate.getDay());
                 const validateOnlySaturdays = (start, end) => {
                     const current = new Date(start);
                     while (current <= end) {
+                        const dayOfWeek = current.getDay();
+                        console.log('🚨 DEBUG: Validando fecha:', current, 'Día:', dayOfWeek, 'Es sábado:', dayOfWeek === 6);
                         if (!(0, dateUtils_1.isSaturday)(current)) {
+                            console.log('🚨 DEBUG: RECHAZADO - No es sábado:', current);
                             return false; // No es sábado
                         }
                         current.setDate(current.getDate() + 1);
@@ -384,10 +390,12 @@ class VacationController {
                     return true;
                 };
                 if (!validateOnlySaturdays(startDate, finalEndDate)) {
+                    console.log('🚨 DEBUG: VALIDACIÓN FALLIDA - Rechazando solicitud');
                     return res.status(400).json({
                         message: 'Para días de trabajo extra solo se pueden seleccionar sábados. Por favor, selecciona únicamente fechas que sean sábados.'
                     });
                 }
+                console.log('🚨 DEBUG: VALIDACIÓN EXITOSA - Todos los días son sábados');
                 // Validar que no sea el sábado actual
                 const today = new Date();
                 const isToday = startDate.toDateString() === today.toDateString();

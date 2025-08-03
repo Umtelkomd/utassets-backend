@@ -26,13 +26,19 @@ const checkGoogleOAuthConfig = (req, res, next) => {
 };
 // Rutas públicas
 router.post('/login', AuthController_1.authController.login.bind(AuthController_1.authController));
+router.post('/login-redirect', AuthController_1.authController.loginWithRedirect.bind(AuthController_1.authController));
 router.post('/register', uploadMiddleware_1.upload.single('image'), AuthController_1.authController.register.bind(AuthController_1.authController));
+// Ruta para verificar tokens desde sistemas externos (SSO)
+router.post('/verify-token', AuthController_1.authController.verifyToken.bind(AuthController_1.authController));
+router.get('/verify-token', AuthController_1.authController.verifyToken.bind(AuthController_1.authController));
 // Rutas de Google OAuth (con verificación de configuración)
 router.get('/google', checkGoogleOAuthConfig, passport_1.default.authenticate('google', { scope: ['profile', 'email'] }));
 router.get('/google/callback', checkGoogleOAuthConfig, passport_1.default.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=google_auth_failed` }), AuthController_1.authController.googleCallback.bind(AuthController_1.authController));
 // Rutas protegidas que requieren autenticación
 router.get('/me', authMiddleware_1.authMiddleware, AuthController_1.authController.getCurrentUser.bind(AuthController_1.authController));
 router.post('/change-password', authMiddleware_1.authMiddleware, AuthController_1.authController.changePassword.bind(AuthController_1.authController));
+// ✨ NUEVO: Generar token de redirección para usuario ya autenticado (SSO)
+router.post('/generate-redirect-token', authMiddleware_1.authMiddleware, AuthController_1.authController.generateRedirectToken.bind(AuthController_1.authController));
 // Rutas de administración (solo administradores)
 router.get('/users', authMiddleware_1.authMiddleware, AuthController_1.authController.getAllUsers.bind(AuthController_1.authController));
 router.get('/users/:id', authMiddleware_1.isAdmin, AuthController_1.authController.getUserById.bind(AuthController_1.authController));
