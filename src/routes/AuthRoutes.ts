@@ -27,7 +27,12 @@ const checkGoogleOAuthConfig = (req: any, res: any, next: any) => {
 
 // Rutas públicas
 router.post('/login', authController.login.bind(authController));
+router.post('/login-redirect', authController.loginWithRedirect.bind(authController));
 router.post('/register', upload.single('image'), authController.register.bind(authController));
+
+// Ruta para verificar tokens desde sistemas externos (SSO)
+router.post('/verify-token', authController.verifyToken.bind(authController));
+router.get('/verify-token', authController.verifyToken.bind(authController));
 
 // Rutas de Google OAuth (con verificación de configuración)
 router.get('/google',

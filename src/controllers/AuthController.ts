@@ -554,6 +554,202 @@ export class AuthController {
             res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=server_error`);
         }
     }
+
+    // Nuevo método para verificar tokens desde sistemas externos (SSO)
+    async verifyToken(req: Request, res: Response): Promise<void> {
+        try {
+            const authHeader = req.headers['authorization'];
+            let token = authHeader && authHeader.split(' ')[1];
+
+            // Si no hay token en el header, intentar obtenerlo del body o query
+            if (!token) {
+                token = req.body.token || req.query.token as string;
+            }
+
+            if (!token) {
+                res.status(401).json({ 
+                    valid: false, 
+                    message: 'Token no proporcionado' 
+                });
+                return;
+            }
+
+            try {
+                const decoded = jwt.verify(token, JWT_SECRET) as {
+                    id: number;
+                    email: string;
+                    role: string;
+                    username?: string;
+                };
+
+                // Verificar que el usuario aún existe y está activo
+                const user = await userRepository.getUserById(decoded.id);
+                
+                if (!user || !user.isActive) {
+                    res.status(401).json({ 
+                        valid: false, 
+                        message: 'Usuario no encontrado o inactivo' 
+                    });
+                    return;
+                }
+
+                // Retornar información del usuario sin datos sensibles
+                const { password: _, ...userWithoutPassword } = user;
+                res.status(200).json({
+                    valid: true,
+                    user: userWithoutPassword,
+                    message: 'Token válido'
+                });
+
+            } catch (jwtError) {
+                res.status(401).json({ 
+                    valid: false, 
+                    message: 'Token inválido o expirado' 
+                });
+                return;
+            }
+
+        } catch (error) {
+            console.error('Error al verificar token:', error);
+            res.status(500).json({ 
+                valid: false, 
+                message: 'Error interno del servidor' 
+            });
+        }
+    }
+
+    // Método para login con redirección SSO
+    async loginWithRedirect(req: Request, res: Response): Promise<void> {
+        try {
+            const { email, password } = req.body;
+            const redirectUrl = req.query.redirect as string || req.body.redirect;
+            const username = email;
+
+            // Validar que se proporcionaron las credenciales
+            if (!email || !password) {
+                const errorUrl = redirectUrl ? 
+                    `${redirectUrl}?error=missing_credentials` : 
+                    `${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=missing_credentials`;
+                
+                if (redirectUrl) {
+                    res.redirect(errorUrl);
+                    return;
+                } else {
+                    res.status(400).json({ message: 'Se requiere correo y contraseña' });
+                    return;
+                }
+            }
+
+            // Buscar el usuario por nombre de usuario o email
+            let user = await userRepository.getUserByUsername(username);
+
+            if (!user) {
+                user = await userRepository.getUserByEmail(username);
+            }
+
+            if (!user) {
+                const errorUrl = redirectUrl ? 
+                    `${redirectUrl}?error=invalid_credentials` : 
+                    `${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=invalid_credentials`;
+                
+                if (redirectUrl) {
+                    res.redirect(errorUrl);
+                    return;
+                } else {
+                    res.status(401).json({ message: 'Credenciales inválidas' });
+                    return;
+                }
+            }
+
+            // Verificar si el usuario está activo
+            if (!user.isActive) {
+                const errorUrl = redirectUrl ? 
+                    `${redirectUrl}?error=user_inactive` : 
+                    `${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=user_inactive`;
+                
+                if (redirectUrl) {
+                    res.redirect(errorUrl);
+                    return;
+                } else {
+                    res.status(401).json({ message: 'Usuario desactivado. Contacte al administrador.' });
+                    return;
+                }
+            }
+
+            // Verificar la contraseña
+            const isValidPassword = await userRepository.verifyPassword(user, password);
+            if (!isValidPassword) {
+                const errorUrl = redirectUrl ? 
+                    `${redirectUrl}?error=invalid_credentials` : 
+                    `${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=invalid_credentials`;
+                
+                if (redirectUrl) {
+                    res.redirect(errorUrl);
+                    return;
+                } else {
+                    res.status(401).json({ message: 'Credenciales inválidas' });
+                    return;
+                }
+            }
+
+            // Verificar confirmación de email (solo si no es OAuth)
+            if (!user.isEmailConfirmed) {
+                const errorUrl = redirectUrl ? 
+                    `${redirectUrl}?error=email_not_confirmed` : 
+                    `${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=email_not_confirmed`;
+                
+                if (redirectUrl) {
+                    res.redirect(errorUrl);
+                    return;
+                } else {
+                    res.status(401).json({ message: 'Email no confirmado' });
+                    return;
+                }
+            }
+
+            // Actualizar último inicio de sesión
+            const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+            await userRepository.updateLastLogin(user.id, ip?.toString());
+
+            // Generar token JWT
+            const token = jwt.sign(
+                {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    role: user.role
+                },
+                JWT_SECRET,
+                { expiresIn: JWT_EXPIRES_IN }
+            );
+
+            if (redirectUrl) {
+                // Redirigir con el token
+                const redirectUrlWithToken = `${redirectUrl}?token=${token}`;
+                res.redirect(redirectUrlWithToken);
+            } else {
+                // Respuesta JSON normal
+                const { password: _, ...userWithoutPassword } = user;
+                res.status(200).json({
+                    message: 'Inicio de sesión exitoso',
+                    token,
+                    user: userWithoutPassword
+                });
+            }
+        } catch (error) {
+            console.error('Error en login con redirección:', error);
+            const redirectUrl = req.query.redirect as string || req.body.redirect;
+            const errorUrl = redirectUrl ? 
+                `${redirectUrl}?error=server_error` : 
+                `${process.env.FRONTEND_URL || 'http://localhost:3000/utassets'}/login?error=server_error`;
+            
+            if (redirectUrl) {
+                res.redirect(errorUrl);
+            } else {
+                res.status(500).json({ message: 'Error interno del servidor' });
+            }
+        }
+    }
 }
 
 export const authController = new AuthController(); 
