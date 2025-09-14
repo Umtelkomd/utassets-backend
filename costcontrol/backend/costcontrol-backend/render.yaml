@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: costcontrol-backend
+    env: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    rootDir: ./
+    envVars:
+      - key: NODE_ENV
+        value: production 

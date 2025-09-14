@@ -1,0 +1,15 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  VITE_API_URL = "https://costcontrol-backend.onrender.com/api"
+  VITE_APP_TITLE = "Sistema de Control de Costos"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production.environment]
+  VITE_API_URL = "https://costcontrol-backend.onrender.com/api"

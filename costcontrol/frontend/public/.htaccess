@@ -1,0 +1,14 @@
+# SPA fallback for React app deployed under /costcontrol
+# Place this file in the web root of the costcontrol app (public_html/costcontrol/)
+
+Options -MultiViews
+RewriteEngine On
+RewriteBase /costcontrol/
+
+# Serve existing files directly
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Fallback all other requests to index.html
+RewriteRule ^ index.html [L] 
