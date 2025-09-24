@@ -1,0 +1,13 @@
+{
+    "type": "postgres",
+    "host": "localhost",
+    "port": 5432,
+    "username": "postgres",
+    "password": "postgres",
+    "database": "umtelkomd_db",
+    "synchronize": false,
+    "logging": true,
+    "entities": ["entity/*.js"],
+    "migrations": ["database/migration/*.js"],
+    "subscribers": ["database/subscriber/*.js"]
+  }
