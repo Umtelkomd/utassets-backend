@@ -66,6 +66,10 @@ class UserRepository {
         return this.repository.findOneBy({ email });
     }
 
+    async getUserByPasswordResetToken(token: string): Promise<User | null> {
+        return this.repository.findOneBy({ passwordResetToken: token });
+    }
+
     async updateUser(id: number, userData: UserUpdateDTO): Promise<User | null> {
         // Hash de la contraseña si se está actualizando
         if (userData.password) {

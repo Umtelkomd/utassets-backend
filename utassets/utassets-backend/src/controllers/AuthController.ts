@@ -815,6 +815,115 @@ export class AuthController {
             });
         }
     }
+
+    async forgotPassword(req: Request, res: Response): Promise<void> {
+        try {
+            const { email } = req.body;
+
+            if (!email) {
+                res.status(400).json({ message: 'Email requerido' });
+                return;
+            }
+
+            // Buscar usuario por email
+            const user = await userRepository.getUserByEmail(email);
+            if (!user) {
+                // Por seguridad, responder exitosamente incluso si el email no existe
+                res.status(200).json({
+                    message: 'Si el email existe en nuestro sistema, recibirás un enlace de recuperación.'
+                });
+                return;
+            }
+
+            // Generar token de recuperación
+            const { v4: uuidv4 } = await import('uuid');
+            const resetToken = uuidv4();
+            const tokenExpires = new Date();
+            tokenExpires.setHours(tokenExpires.getHours() + 1); // Expira en 1 hora
+
+            // Actualizar usuario con token de recuperación
+            await userRepository.updateUser(user.id, {
+                passwordResetToken: resetToken,
+                passwordResetTokenExpires: tokenExpires
+            });
+
+            // Enviar correo de recuperación
+            const { emailService } = await import('../services/EmailService');
+            const emailSent = await emailService.sendPasswordReset(user, resetToken);
+
+            if (!emailSent) {
+                console.error('Error al enviar correo de recuperación de contraseña');
+                res.status(500).json({ message: 'Error al enviar el correo de recuperación' });
+                return;
+            }
+
+            res.status(200).json({
+                message: 'Si el email existe en nuestro sistema, recibirás un enlace de recuperación.'
+            });
+        } catch (error) {
+            console.error('Error en recuperación de contraseña:', error);
+            res.status(500).json({
+                message: 'Error en el servidor',
+                error: (error as Error).message
+            });
+        }
+    }
+
+    async resetPassword(req: Request, res: Response): Promise<void> {
+        try {
+            const { token, newPassword } = req.body;
+
+            if (!token || !newPassword) {
+                res.status(400).json({ message: 'Token y nueva contraseña requeridos' });
+                return;
+            }
+
+            // Validar longitud mínima de contraseña
+            if (newPassword.length < 6) {
+                res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+                return;
+            }
+
+            // Buscar usuario por token de recuperación
+            const user = await userRepository.getUserByPasswordResetToken(token);
+            if (!user) {
+                res.status(400).json({ message: 'Token de recuperación inválido' });
+                return;
+            }
+
+            // Verificar si el token ha expirado
+            if (!user.passwordResetTokenExpires || user.passwordResetTokenExpires < new Date()) {
+                res.status(400).json({ message: 'El token de recuperación ha expirado' });
+                return;
+            }
+
+            // Actualizar contraseña y limpiar tokens
+            await userRepository.updateUser(user.id, {
+                password: newPassword,
+                passwordResetToken: undefined,
+                passwordResetTokenExpires: undefined
+            });
+
+            // Enviar correo de confirmación
+            const { emailService } = await import('../services/EmailService');
+            try {
+                await emailService.sendPasswordResetConfirmation(user);
+            } catch (emailError) {
+                console.error('Error al enviar correo de confirmación:', emailError);
+                // No interrumpimos el proceso si falla el envío del correo
+            }
+
+            res.status(200).json({
+                message: 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión.'
+            });
+        } catch (error) {
+            console.error('Error al restablecer contraseña:', error);
+            res.status(500).json({
+                message: 'Error en el servidor',
+                error: (error as Error).message
+            });
+        }
+    }
 }
 
 export const authController = new AuthController(); 

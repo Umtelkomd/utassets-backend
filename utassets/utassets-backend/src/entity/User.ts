@@ -71,6 +71,12 @@ export class User {
     @Column({ name: 'email_confirmation_token_expires', type: 'timestamp', nullable: true })
     emailConfirmationTokenExpires?: Date;
 
+    @Column({ name: 'password_reset_token', type: 'varchar', nullable: true })
+    passwordResetToken?: string;
+
+    @Column({ name: 'password_reset_token_expires', type: 'timestamp', nullable: true })
+    passwordResetTokenExpires?: Date;
+
     @Column({ name: 'vacation_days', type: 'int', default: 25 })
     vacationDays: number;
 

@@ -11,6 +11,8 @@ const controller = new UserController();
 router.post('/register', upload.single('image'), handleMulterError, controller.createUser.bind(controller));
 router.post('/confirm-email', controller.confirmEmail.bind(controller));
 router.post('/resend-confirmation', controller.resendConfirmationEmail.bind(controller));
+router.post('/forgot-password', authController.forgotPassword.bind(authController));
+router.post('/reset-password', authController.resetPassword.bind(authController));
 
 // Rutas protegidas
 router.use(authMiddleware);
