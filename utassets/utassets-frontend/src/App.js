@@ -18,6 +18,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
+import ResetPasswordConfirm from "./pages/ResetPasswordConfirm";
 import ConfirmEmail from "./pages/ConfirmEmail";
 import Dashboard from "./pages/Dashboard";
 import InventoryList from "./pages/InventoryList";
@@ -77,6 +78,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
             <Route path="/confirm-email" element={<ConfirmEmail />} />
             <Route path="/access-denied" element={<AccessDenied />} />
             <Route path="/categories" element={<Categories />} />

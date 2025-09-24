@@ -31,7 +31,7 @@ const ResetPassword = () => {
         try {
             setLoading(true);
             // Usar axios directamente para enviar la solicitud de reset
-            await axios.post(`${API_URL}/auth/reset-password`, { email });
+            await axios.post(`${API_URL}/users/forgot-password`, { email });
 
             setMessage('Se ha enviado un correo electrónico para restablecer tu contraseña. Por favor, revisa tu bandeja de entrada.');
             setEmail('');
