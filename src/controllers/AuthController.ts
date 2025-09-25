@@ -871,50 +871,70 @@ export class AuthController {
 
     async resetPassword(req: Request, res: Response): Promise<void> {
         try {
-            const { token, newPassword } = req.body;
+            console.log('🎯 [RESET-PASSWORD] ¡MÉTODO ALCANZADO! Ruta funcionando correctamente');
+            console.log('🔄 [RESET-PASSWORD] Iniciando proceso de reset de contraseña');
+            console.log('🌐 [RESET-PASSWORD] URL completa:', req.url);
+            console.log('🌐 [RESET-PASSWORD] Método:', req.method);
+            console.log('📄 [RESET-PASSWORD] Body recibido:', req.body);
+            console.log('📋 [RESET-PASSWORD] Headers:', req.headers);
+            
+            const { email, newPassword } = req.body;
+            console.log('📧 [RESET-PASSWORD] Email recibido:', email ? 'Presente' : 'AUSENTE');
+            console.log('🔒 [RESET-PASSWORD] Nueva contraseña:', newPassword ? 'Presente' : 'AUSENTE');
 
-            if (!token || !newPassword) {
-                res.status(400).json({ message: 'Token y nueva contraseña requeridos' });
+            if (!email || !newPassword) {
+                console.log('❌ [RESET-PASSWORD] Faltan datos requeridos');
+                res.status(400).json({ message: 'Email y nueva contraseña requeridos' });
                 return;
             }
 
             // Validar longitud mínima de contraseña
             if (newPassword.length < 6) {
+                console.log('❌ [RESET-PASSWORD] Contraseña muy corta');
                 res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
                 return;
             }
 
-            // Buscar usuario por token de recuperación
-            const user = await userRepository.getUserByPasswordResetToken(token);
+            // Buscar usuario por email
+            console.log('🔍 [RESET-PASSWORD] Buscando usuario por email...');
+            const user = await userRepository.getUserByEmail(email);
+            console.log('👤 [RESET-PASSWORD] Usuario encontrado:', user ? `ID: ${user.id}, Email: ${user.email}` : 'NO ENCONTRADO');
+            
             if (!user) {
-                res.status(400).json({ message: 'Token de recuperación inválido' });
+                console.log('❌ [RESET-PASSWORD] Usuario no encontrado');
+                res.status(400).json({ message: 'Usuario no encontrado' });
                 return;
             }
 
-            // Verificar si el token ha expirado
-            if (!user.passwordResetTokenExpires || user.passwordResetTokenExpires < new Date()) {
-                res.status(400).json({ message: 'El token de recuperación ha expirado' });
+            // Verificar que el usuario esté activo
+            if (!user.isActive) {
+                console.log('❌ [RESET-PASSWORD] Usuario inactivo');
+                res.status(400).json({ message: 'Usuario inactivo. Contacte al administrador.' });
                 return;
             }
 
-            // Actualizar contraseña y limpiar tokens
+            // Actualizar contraseña
+            console.log('💾 [RESET-PASSWORD] Actualizando contraseña...');
             await userRepository.updateUser(user.id, {
-                password: newPassword,
-                passwordResetToken: undefined,
-                passwordResetTokenExpires: undefined
+                password: newPassword
             });
+            console.log('✅ [RESET-PASSWORD] Contraseña actualizada exitosamente');
 
-            // Enviar correo de confirmación
-            const { emailService } = await import('../services/EmailService');
+            // Intentar enviar correo de confirmación (opcional)
             try {
+                const { emailService } = await import('../services/EmailService');
+                console.log('📧 [RESET-PASSWORD] Enviando correo de confirmación...');
                 await emailService.sendPasswordResetConfirmation(user);
+                console.log('✅ [RESET-PASSWORD] Correo de confirmación enviado');
             } catch (emailError) {
-                console.error('Error al enviar correo de confirmación:', emailError);
+                console.error('❌ [RESET-PASSWORD] Error al enviar correo de confirmación:', emailError);
                 // No interrumpimos el proceso si falla el envío del correo
             }
 
+            console.log('🎉 [RESET-PASSWORD] Proceso completado exitosamente');
             res.status(200).json({
-                message: 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión.'
+                message: 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión.',
+                email: user.email
             });
         } catch (error) {
             console.error('Error al restablecer contraseña:', error);
