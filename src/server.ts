@@ -51,6 +51,7 @@ createUploadDirectories();
 const allowedOrigins = [
     process.env.COSTCONTROL_FRONTEND_URL,
     process.env.UTASSETS_FRONTEND_URL,
+    process.env.DEVELOPMENT_FRONTEND_URL,
     'https://utassets.umtelkomd.net',
     'http://localhost:3000',
     'http://localhost:3001'
