@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.hasRoles = exports.isAdmin = exports.authMiddleware = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = require("../entity/User");
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'utassets_secret_key_2024_secure_token';
 // Middleware para verificar que el usuario esté autenticado
 const authMiddleware = (req, res, next) => {
     var _a;

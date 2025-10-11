@@ -83,6 +83,65 @@ class EmailService {
             return false;
         }
     }
+    async sendPasswordReset(user, resetToken) {
+        try {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const resetUrl = `${frontendUrl}/reset-password-confirm?token=${resetToken}`;
+            console.log(`🔗 URL de recuperación generada: ${resetUrl}`);
+            console.log(`📧 Enviando correo de recuperación a: ${user.email}`);
+            const mailOptions = {
+                from: `"UT Assets" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+                to: user.email,
+                subject: 'Recuperación de contraseña - UT Assets',
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <h2>Recuperación de contraseña</h2>
+                        <p>¡Hola ${user.fullName}!</p>
+                        <p>Has solicitado restablecer tu contraseña. Para continuar, haz clic en el siguiente enlace:</p>
+                        <a href="${resetUrl}" style="background-color: #dc2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Restablecer contraseña</a>
+                        <p>O copia y pega este enlace en tu navegador:</p>
+                        <p>${resetUrl}</p>
+                        <p><strong>Importante:</strong> Este enlace expirará en 1 hora.</p>
+                        <p>Si no solicitaste este cambio, puedes ignorar este correo.</p>
+                    </div>
+                `
+            };
+            await this.transporter.sendMail(mailOptions);
+            console.log(`📧 Correo de recuperación enviado a: ${user.email}`);
+            return true;
+        }
+        catch (error) {
+            console.error('❌ Error al enviar correo de recuperación:', error);
+            return false;
+        }
+    }
+    async sendPasswordResetConfirmation(user) {
+        try {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const loginUrl = `${frontendUrl}/login`;
+            const mailOptions = {
+                from: `"UT Assets" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+                to: user.email,
+                subject: '✅ Contraseña restablecida - UT Assets',
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <h2>¡Contraseña restablecida exitosamente!</h2>
+                        <p>¡Hola ${user.fullName}!</p>
+                        <p>Tu contraseña ha sido cambiada correctamente. Ya puedes iniciar sesión con tu nueva contraseña:</p>
+                        <a href="${loginUrl}" style="background-color: #059669; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Iniciar Sesión</a>
+                        <p>Si no realizaste este cambio, contacta inmediatamente al administrador del sistema.</p>
+                    </div>
+                `
+            };
+            await this.transporter.sendMail(mailOptions);
+            console.log(`📧 Correo de confirmación de cambio de contraseña enviado a: ${user.email}`);
+            return true;
+        }
+        catch (error) {
+            console.error('❌ Error al enviar correo de confirmación de cambio de contraseña:', error);
+            return false;
+        }
+    }
     async testConnection() {
         try {
             await this.transporter.verify();

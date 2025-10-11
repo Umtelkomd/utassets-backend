@@ -97,6 +97,14 @@ __decorate([
     __metadata("design:type", Date)
 ], User.prototype, "emailConfirmationTokenExpires", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'password_reset_token', type: 'varchar', nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "passwordResetToken", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'password_reset_token_expires', type: 'timestamp', nullable: true }),
+    __metadata("design:type", Date)
+], User.prototype, "passwordResetTokenExpires", void 0);
+__decorate([
     (0, typeorm_1.Column)({ name: 'vacation_days', type: 'int', default: 25 }),
     __metadata("design:type", Number)
 ], User.prototype, "vacationDays", void 0);

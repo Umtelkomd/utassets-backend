@@ -1,9 +1,11 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
+import { Readable } from 'stream';
 
 // Definir tipo para archivo
 interface UploadFile {
-    path: string;
+    path?: string;
+    buffer?: Buffer;
     filename?: string;
     originalname?: string;
     mimetype?: string;
@@ -21,20 +23,50 @@ export class UploadService {
     // Método para subir archivos a Cloudinary
     async uploadImage(file: UploadFile, folder?: string): Promise<any> {
         try {
-            const result = await cloudinary.uploader.upload(file.path, {
-                folder: folder || 'uploads',
-                resource_type: 'auto'
-            });
+            let result;
 
-            // Eliminar archivo temporal
-            if (fs.existsSync(file.path)) {
-                fs.unlinkSync(file.path);
+            // Si el archivo está en memoria (buffer), usar upload_stream
+            if (file.buffer) {
+                result = await new Promise((resolve, reject) => {
+                    const uploadStream = cloudinary.uploader.upload_stream(
+                        {
+                            folder: folder || 'uploads',
+                            resource_type: 'auto'
+                        },
+                        (error, result) => {
+                            if (error) reject(error);
+                            else resolve(result);
+                        }
+                    );
+
+                    // Crear un stream desde el buffer y enviarlo a Cloudinary
+                    if (file.buffer) {
+                        const bufferStream = Readable.from(file.buffer);
+                        bufferStream.pipe(uploadStream);
+                    } else {
+                        reject(new Error('Buffer no disponible'));
+                    }
+                });
+            }
+            // Si el archivo está en disco (path), usar upload tradicional
+            else if (file.path) {
+                result = await cloudinary.uploader.upload(file.path, {
+                    folder: folder || 'uploads',
+                    resource_type: 'auto'
+                });
+
+                // Eliminar archivo temporal
+                if (fs.existsSync(file.path)) {
+                    fs.unlinkSync(file.path);
+                }
+            } else {
+                throw new Error('El archivo no tiene ni buffer ni path');
             }
 
             return result;
         } catch (error) {
-            // Eliminar archivo temporal en caso de error
-            if (fs.existsSync(file.path)) {
+            // Eliminar archivo temporal en caso de error (solo si existe path)
+            if (file.path && fs.existsSync(file.path)) {
                 fs.unlinkSync(file.path);
             }
             throw error;

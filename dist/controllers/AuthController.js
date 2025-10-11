@@ -572,7 +572,7 @@ class AuthController {
             if (!email || !password) {
                 const errorUrl = redirectUrl ?
                     `${redirectUrl}?error=missing_credentials` :
-                    `${process.env.FRONTEND_URL }/login?error=missing_credentials`;
+                    `${process.env.FRONTEND_URL}/login?error=missing_credentials`;
                 if (redirectUrl) {
                     res.redirect(errorUrl);
                     return;
@@ -590,7 +590,7 @@ class AuthController {
             if (!user) {
                 const errorUrl = redirectUrl ?
                     `${redirectUrl}?error=invalid_credentials` :
-                    `${process.env.FRONTEND_URL }/login?error=invalid_credentials`;
+                    `${process.env.FRONTEND_URL}/login?error=invalid_credentials`;
                 if (redirectUrl) {
                     res.redirect(errorUrl);
                     return;
@@ -604,7 +604,7 @@ class AuthController {
             if (!user.isActive) {
                 const errorUrl = redirectUrl ?
                     `${redirectUrl}?error=user_inactive` :
-                    `${process.env.FRONTEND_URL }/login?error=user_inactive`;
+                    `${process.env.FRONTEND_URL}/login?error=user_inactive`;
                 if (redirectUrl) {
                     res.redirect(errorUrl);
                     return;
@@ -619,7 +619,7 @@ class AuthController {
             if (!isValidPassword) {
                 const errorUrl = redirectUrl ?
                     `${redirectUrl}?error=invalid_credentials` :
-                    `${process.env.FRONTEND_URL }/login?error=invalid_credentials`;
+                    `${process.env.FRONTEND_URL}/login?error=invalid_credentials`;
                 if (redirectUrl) {
                     res.redirect(errorUrl);
                     return;
@@ -633,7 +633,7 @@ class AuthController {
             if (!user.isEmailConfirmed) {
                 const errorUrl = redirectUrl ?
                     `${redirectUrl}?error=email_not_confirmed` :
-                    `${process.env.FRONTEND_URL }/login?error=email_not_confirmed`;
+                    `${process.env.FRONTEND_URL}/login?error=email_not_confirmed`;
                 if (redirectUrl) {
                     res.redirect(errorUrl);
                     return;
@@ -673,7 +673,7 @@ class AuthController {
             const redirectUrl = req.query.redirect || req.body.redirect;
             const errorUrl = redirectUrl ?
                 `${redirectUrl}?error=server_error` :
-                `${process.env.FRONTEND_URL }/login?error=server_error`;
+                `${process.env.FRONTEND_URL}/login?error=server_error`;
             if (redirectUrl) {
                 res.redirect(errorUrl);
             }
@@ -731,6 +731,120 @@ class AuthController {
             res.status(500).json({
                 message: 'Error interno del servidor',
                 error: 'INTERNAL_SERVER_ERROR'
+            });
+        }
+    }
+    async forgotPassword(req, res) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                res.status(400).json({ message: 'Email requerido' });
+                return;
+            }
+            // Buscar usuario por email
+            const user = await UserRepository_1.userRepository.getUserByEmail(email);
+            if (!user) {
+                // Por seguridad, responder exitosamente incluso si el email no existe
+                res.status(200).json({
+                    message: 'Si el email existe en nuestro sistema, recibirás un enlace de recuperación.'
+                });
+                return;
+            }
+            // Generar token de recuperación
+            const { v4: uuidv4 } = await Promise.resolve().then(() => __importStar(require('uuid')));
+            const resetToken = uuidv4();
+            const tokenExpires = new Date();
+            tokenExpires.setHours(tokenExpires.getHours() + 1); // Expira en 1 hora
+            // Actualizar usuario con token de recuperación
+            await UserRepository_1.userRepository.updateUser(user.id, {
+                passwordResetToken: resetToken,
+                passwordResetTokenExpires: tokenExpires
+            });
+            // Enviar correo de recuperación
+            const { emailService } = await Promise.resolve().then(() => __importStar(require('../services/EmailService')));
+            const emailSent = await emailService.sendPasswordReset(user, resetToken);
+            if (!emailSent) {
+                console.error('Error al enviar correo de recuperación de contraseña');
+                res.status(500).json({ message: 'Error al enviar el correo de recuperación' });
+                return;
+            }
+            res.status(200).json({
+                message: 'Si el email existe en nuestro sistema, recibirás un enlace de recuperación.'
+            });
+        }
+        catch (error) {
+            console.error('Error en recuperación de contraseña:', error);
+            res.status(500).json({
+                message: 'Error en el servidor',
+                error: error.message
+            });
+        }
+    }
+    async resetPassword(req, res) {
+        try {
+            console.log('🎯 [RESET-PASSWORD] ¡MÉTODO ALCANZADO! Ruta funcionando correctamente');
+            console.log('🔄 [RESET-PASSWORD] Iniciando proceso de reset de contraseña');
+            console.log('🌐 [RESET-PASSWORD] URL completa:', req.url);
+            console.log('🌐 [RESET-PASSWORD] Método:', req.method);
+            console.log('📄 [RESET-PASSWORD] Body recibido:', req.body);
+            console.log('📋 [RESET-PASSWORD] Headers:', req.headers);
+            const { email, newPassword } = req.body;
+            console.log('📧 [RESET-PASSWORD] Email recibido:', email ? 'Presente' : 'AUSENTE');
+            console.log('🔒 [RESET-PASSWORD] Nueva contraseña:', newPassword ? 'Presente' : 'AUSENTE');
+            if (!email || !newPassword) {
+                console.log('❌ [RESET-PASSWORD] Faltan datos requeridos');
+                res.status(400).json({ message: 'Email y nueva contraseña requeridos' });
+                return;
+            }
+            // Validar longitud mínima de contraseña
+            if (newPassword.length < 6) {
+                console.log('❌ [RESET-PASSWORD] Contraseña muy corta');
+                res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+                return;
+            }
+            // Buscar usuario por email
+            console.log('🔍 [RESET-PASSWORD] Buscando usuario por email...');
+            const user = await UserRepository_1.userRepository.getUserByEmail(email);
+            console.log('👤 [RESET-PASSWORD] Usuario encontrado:', user ? `ID: ${user.id}, Email: ${user.email}` : 'NO ENCONTRADO');
+            if (!user) {
+                console.log('❌ [RESET-PASSWORD] Usuario no encontrado');
+                res.status(400).json({ message: 'Usuario no encontrado' });
+                return;
+            }
+            // Verificar que el usuario esté activo
+            if (!user.isActive) {
+                console.log('❌ [RESET-PASSWORD] Usuario inactivo');
+                res.status(400).json({ message: 'Usuario inactivo. Contacte al administrador.' });
+                return;
+            }
+            // Actualizar contraseña
+            console.log('💾 [RESET-PASSWORD] Actualizando contraseña...');
+            await UserRepository_1.userRepository.updateUser(user.id, {
+                password: newPassword
+            });
+            console.log('✅ [RESET-PASSWORD] Contraseña actualizada exitosamente');
+            // Intentar enviar correo de confirmación (opcional)
+            try {
+                const { emailService } = await Promise.resolve().then(() => __importStar(require('../services/EmailService')));
+                console.log('📧 [RESET-PASSWORD] Enviando correo de confirmación...');
+                await emailService.sendPasswordResetConfirmation(user);
+                console.log('✅ [RESET-PASSWORD] Correo de confirmación enviado');
+            }
+            catch (emailError) {
+                console.error('❌ [RESET-PASSWORD] Error al enviar correo de confirmación:', emailError);
+                // No interrumpimos el proceso si falla el envío del correo
+            }
+            console.log('🎉 [RESET-PASSWORD] Proceso completado exitosamente');
+            res.status(200).json({
+                message: 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión.',
+                email: user.email
+            });
+        }
+        catch (error) {
+            console.error('Error al restablecer contraseña:', error);
+            res.status(500).json({
+                message: 'Error en el servidor',
+                error: error.message
             });
         }
     }

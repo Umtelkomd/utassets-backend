@@ -33,7 +33,7 @@ router.post('/verify-token', AuthController_1.authController.verifyToken.bind(Au
 router.get('/verify-token', AuthController_1.authController.verifyToken.bind(AuthController_1.authController));
 // Rutas de Google OAuth (con verificación de configuración)
 router.get('/google', checkGoogleOAuthConfig, passport_1.default.authenticate('google', { scope: ['profile', 'email'] }));
-router.get('/google/callback', checkGoogleOAuthConfig, passport_1.default.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL }/login?error=google_auth_failed` }), AuthController_1.authController.googleCallback.bind(AuthController_1.authController));
+router.get('/google/callback', checkGoogleOAuthConfig, passport_1.default.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_auth_failed` }), AuthController_1.authController.googleCallback.bind(AuthController_1.authController));
 // Rutas protegidas que requieren autenticación
 router.get('/me', authMiddleware_1.authMiddleware, AuthController_1.authController.getCurrentUser.bind(AuthController_1.authController));
 router.post('/change-password', authMiddleware_1.authMiddleware, AuthController_1.authController.changePassword.bind(AuthController_1.authController));
