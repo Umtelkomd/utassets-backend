@@ -24,6 +24,7 @@ import paymentRoutes from './routes/PaymentRoutes';
 import fiberControlRoutes from './routes/FiberControlRoutes';
 import path from 'path';
 import fs from 'fs';
+import { seedFiberActivities } from './seeds/fiberActivitiesSeed';
 
 const app = express();
 const PORT = process.env.PORT || 5051;
@@ -125,8 +126,16 @@ app.use('/api/fiber-control', fiberControlRoutes);
 
 // Inicializar la base de datos y el servidor
 AppDataSource.initialize()
-    .then(() => {
+    .then(async () => {
         console.log('Base de datos conectada');
+
+        // Seed Fiber Activities
+        try {
+            await seedFiberActivities();
+        } catch (error) {
+            console.log('Error al inicializar actividades de fibra:', error);
+        }
+
         app.listen(PORT, () => {
             console.log(`Servidor corriendo en el puerto ${PORT}`);
         });
