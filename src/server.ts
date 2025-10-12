@@ -21,6 +21,7 @@ import housingRoutes from './routes/HousingRoutes';
 import vacationRoutes from './routes/VacationRoutes';
 import financingRoutes from './routes/FinancingRoutes';
 import paymentRoutes from './routes/PaymentRoutes';
+import fiberControlRoutes from './routes/FiberControlRoutes';
 import path from 'path';
 import fs from 'fs';
 
@@ -120,6 +121,7 @@ app.use('/api/housing', housingRoutes);
 app.use('/api/vacations', vacationRoutes);
 app.use('/api/financings', financingRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/fiber-control', fiberControlRoutes);
 
 // Inicializar la base de datos y el servidor
 AppDataSource.initialize()
