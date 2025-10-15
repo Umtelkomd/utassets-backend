@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { HolidayController } from '../controllers/HolidayController';
-import { authMiddleware } from '../middleware/authMiddleware';
-import { roleMiddleware } from '../middleware/roleMiddleware';
+import { authMiddleware, hasRoles } from '../middlewares/authMiddleware';
+import { UserRole } from '../entity/User';
 
 const router = Router();
 const holidayController = new HolidayController();
@@ -16,10 +16,10 @@ router.get('/user/:userId', holidayController.getHolidaysByUser);
 router.get('/user/:userId/range', holidayController.getHolidaysByUserAndDateRange);
 
 // Solo administradores pueden crear, actualizar y eliminar festivos
-router.post('/', roleMiddleware(['administrador']), holidayController.createHoliday);
-router.post('/bulk', roleMiddleware(['administrador']), holidayController.createMultipleHolidays);
-router.put('/:id', roleMiddleware(['administrador']), holidayController.updateHoliday);
-router.delete('/:id', roleMiddleware(['administrador']), holidayController.deleteHoliday);
-router.delete('/user/:userId', roleMiddleware(['administrador']), holidayController.deleteAllHolidaysByUser);
+router.post('/', hasRoles([UserRole.ADMIN]), holidayController.createHoliday);
+router.post('/bulk', hasRoles([UserRole.ADMIN]), holidayController.createMultipleHolidays);
+router.put('/:id', hasRoles([UserRole.ADMIN]), holidayController.updateHoliday);
+router.delete('/:id', hasRoles([UserRole.ADMIN]), holidayController.deleteHoliday);
+router.delete('/user/:userId', hasRoles([UserRole.ADMIN]), holidayController.deleteAllHolidaysByUser);
 
 export default router;

@@ -1,4 +1,4 @@
-import { AppDataSource } from '../data-source';
+import { AppDataSource } from '../config/data-source';
 import { Holiday } from '../entity/Holiday';
 
 export const HolidayRepository = AppDataSource.getRepository(Holiday).extend({

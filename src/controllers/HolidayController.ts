@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { HolidayRepository } from '../repositories/HolidayRepository';
-import { UserRepository } from '../repositories/UserRepository';
+import { userRepository } from '../repositories/UserRepository';
 
 export class HolidayController {
     // Obtener todos los festivos de un usuario
@@ -12,7 +12,7 @@ export class HolidayController {
                 return res.status(400).json({ message: 'ID de usuario inválido' });
             }
 
-            const user = await UserRepository.findOneBy({ id: userId });
+            const user = await userRepository.findOneBy({ id: userId });
             if (!user) {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
@@ -62,7 +62,7 @@ export class HolidayController {
             }
 
             // Verificar que el usuario existe
-            const user = await UserRepository.findOneBy({ id: userId });
+            const user = await userRepository.findOneBy({ id: userId });
             if (!user) {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
@@ -109,7 +109,7 @@ export class HolidayController {
                     }
 
                     // Verificar que el usuario existe
-                    const user = await UserRepository.findOneBy({ id: userId });
+                    const user = await userRepository.findOneBy({ id: userId });
                     if (!user) {
                         errors.push({ holiday, error: 'Usuario no encontrado' });
                         continue;
@@ -131,7 +131,7 @@ export class HolidayController {
 
                     createdHolidays.push(created);
                 } catch (error) {
-                    errors.push({ holiday, error: error.message });
+                    errors.push({ holiday, error: error instanceof Error ? error.message : 'Error desconocido' });
                 }
             }
 

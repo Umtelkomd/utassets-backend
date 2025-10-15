@@ -330,7 +330,7 @@ export class VacationController {
                     startDate,
                     finalEndDate
                 );
-                const holidayDates = holidays.map(h => h.date);
+                const holidayDates = holidays.map((h: { date: Date }) => h.date);
 
                 const requestedDays = calculateWorkingDaysExcluding(startDate, finalEndDate, holidayDates);
 
@@ -487,7 +487,7 @@ export class VacationController {
                     startDate,
                     finalEndDate
                 );
-                const holidayDates = holidays.map(h => h.date);
+                const holidayDates = holidays.map((h: { date: Date }) => h.date);
                 workingDays = calculateWorkingDaysExcluding(startDate, finalEndDate, holidayDates);
             }
 
