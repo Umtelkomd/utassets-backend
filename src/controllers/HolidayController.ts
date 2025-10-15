@@ -12,7 +12,7 @@ export class HolidayController {
                 return res.status(400).json({ message: 'ID de usuario inválido' });
             }
 
-            const user = await userRepository.findOneBy({ id: userId });
+            const user = await userRepository.findOne({ where: { id: userId } });
             if (!user) {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
@@ -62,7 +62,7 @@ export class HolidayController {
             }
 
             // Verificar que el usuario existe
-            const user = await userRepository.findOneBy({ id: userId });
+            const user = await userRepository.findOne({ where: { id: userId } });
             if (!user) {
                 return res.status(404).json({ message: 'Usuario no encontrado' });
             }
@@ -109,7 +109,7 @@ export class HolidayController {
                     }
 
                     // Verificar que el usuario existe
-                    const user = await userRepository.findOneBy({ id: userId });
+                    const user = await userRepository.findOne({ where: { id: userId } });
                     if (!user) {
                         errors.push({ holiday, error: 'Usuario no encontrado' });
                         continue;
