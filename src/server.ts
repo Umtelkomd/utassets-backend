@@ -22,6 +22,7 @@ import vacationRoutes from './routes/VacationRoutes';
 import financingRoutes from './routes/FinancingRoutes';
 import paymentRoutes from './routes/PaymentRoutes';
 import fiberControlRoutes from './routes/FiberControlRoutes';
+import holidayRoutes from './routes/holidayRoutes';
 import path from 'path';
 import fs from 'fs';
 
@@ -122,6 +123,7 @@ app.use('/api/vacations', vacationRoutes);
 app.use('/api/financings', financingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/fiber-control', fiberControlRoutes);
+app.use('/api/holidays', holidayRoutes);
 
 // Inicializar la base de datos y el servidor
 AppDataSource.initialize()
