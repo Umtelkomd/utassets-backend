@@ -28,8 +28,10 @@ export class FiberControlController {
                 workOrder.startDate = new Date(workOrder.startDate);
             }
 
-            if (typeof workOrder.endDate === 'string' && workOrder.endDate) {
+            if (workOrder.endDate && typeof workOrder.endDate === 'string' && workOrder.endDate.trim() !== '') {
                 workOrder.endDate = new Date(workOrder.endDate);
+            } else {
+                workOrder.endDate = null;
             }
 
             const newWorkOrder = await fiberWorkOrderRepository.createWorkOrder(workOrder);
@@ -87,8 +89,10 @@ export class FiberControlController {
                 workOrder.startDate = new Date(workOrder.startDate);
             }
 
-            if (typeof workOrder.endDate === 'string' && workOrder.endDate) {
+            if (workOrder.endDate && typeof workOrder.endDate === 'string' && workOrder.endDate.trim() !== '') {
                 workOrder.endDate = new Date(workOrder.endDate);
+            } else {
+                workOrder.endDate = null;
             }
 
             const updatedWorkOrder = await fiberWorkOrderRepository.updateWorkOrder(id, workOrder);
