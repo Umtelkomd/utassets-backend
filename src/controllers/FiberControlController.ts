@@ -130,7 +130,7 @@ export class FiberControlController {
     async createActivity(req: Request, res: Response): Promise<void> {
         try {
             const activity = req.body;
-            const requiredFields = ['description', 'unit', 'price'];
+            const requiredFields = ['id', 'description', 'unit', 'price'];
             const missingFields = requiredFields.filter(field => !activity[field]);
 
             if (missingFields.length > 0) {

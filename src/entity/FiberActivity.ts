@@ -1,8 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
 
 @Entity("fiber_activities")
 export class FiberActivity {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryColumn({ type: "varchar", length: 50 })
   id: string;
 
   @Column({ type: "varchar", length: 255 })
