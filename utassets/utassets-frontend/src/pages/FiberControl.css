@@ -1,0 +1,451 @@
+/* FiberControl - Using utassets color scheme */
+.fiber-control-container {
+  min-height: 100vh;
+  background-color: #f5f7fa;
+}
+
+/* Header with utassets blue */
+.fiber-control-container .fiber-control-header {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 50%, #1f4e79 100%);
+  color: white;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.fiber-control-container .fiber-control-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
+  opacity: 0.1;
+}
+
+.fiber-control-container .header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.fiber-control-container .header-content h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.fiber-control-container .header-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.fiber-control-container .nav-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.fiber-control-container .nav-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.fiber-control-container .nav-button.active {
+  background-color: white;
+  color: #3498db;
+  border-color: white;
+}
+
+.fiber-control-container .nav-button svg {
+  font-size: 1.25rem;
+}
+
+.fiber-control-container .fiber-control-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* KPI Grid - More specific selectors */
+.fiber-control-container .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.fiber-control-container .kpi-grid .kpi-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.fiber-control-container .kpi-grid .kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+  animation: pulse 0.3s ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+  100% { transform: translateY(-4px); }
+}
+
+.fiber-control-container .kpi-grid .kpi-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fiber-control-container .kpi-grid .kpi-icon svg {
+  font-size: 2rem;
+  color: white;
+}
+
+/* Using utassets blue color scheme */
+.fiber-control-container .kpi-grid .kpi-blue .kpi-icon {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+}
+
+.fiber-control-container .kpi-grid .kpi-green .kpi-icon {
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+}
+
+.fiber-control-container .kpi-grid .kpi-yellow .kpi-icon {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.fiber-control-container .kpi-grid .kpi-orange .kpi-icon {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.fiber-control-container .kpi-grid .kpi-content {
+  flex: 1;
+}
+
+.fiber-control-container .kpi-grid .kpi-content h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fiber-control-container .kpi-grid .kpi-value {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* Card Styling - More specific */
+.fiber-control-container .card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.fiber-control-container .card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.fiber-control-container .card .card-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* Table Styling - More specific */
+.fiber-control-container .table-container {
+  overflow-x: auto;
+}
+
+.fiber-control-container .fiber-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fiber-control-container .fiber-table thead {
+  background-color: #f9fafb;
+}
+
+.fiber-control-container .fiber-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.fiber-control-container .fiber-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.fiber-control-container .fiber-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.fiber-control-container .fiber-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+/* Status Badges - More specific */
+.fiber-control-container .status-badge {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.fiber-control-container .status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.fiber-control-container .status-progress {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.fiber-control-container .status-completed {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.fiber-control-container .status-cancelled {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Margin Indicators */
+.fiber-control-container .positive-margin {
+  color: #059669;
+  font-weight: 600;
+}
+
+.fiber-control-container .negative-margin {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* Buttons - More specific and using utassets colors */
+.fiber-control-container .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.fiber-control-container .btn-primary {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+}
+
+.fiber-control-container .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+}
+
+.fiber-control-container .btn svg {
+  font-size: 1.25rem;
+}
+
+/* Action Buttons - More specific */
+.fiber-control-container .action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fiber-control-container .btn-icon {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fiber-control-container .btn-icon svg {
+  font-size: 1.125rem;
+}
+
+.fiber-control-container .btn-edit {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.fiber-control-container .btn-edit:hover {
+  background-color: #3498db;
+  color: white;
+  transform: scale(1.1);
+}
+
+.fiber-control-container .btn-delete {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.fiber-control-container .btn-delete:hover {
+  background-color: #e74c3c;
+  color: white;
+  transform: scale(1.1);
+}
+
+/* Empty State */
+.fiber-control-container .empty-state {
+  padding: 4rem 2rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.fiber-control-container .empty-state p {
+  margin-bottom: 1.5rem;
+  font-size: 1.125rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .fiber-control-container .fiber-control-header {
+    padding: 1.5rem;
+  }
+
+  .fiber-control-container .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fiber-control-container .header-content h1 {
+    font-size: 1.5rem;
+  }
+
+  .fiber-control-container .header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .fiber-control-container .nav-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .fiber-control-container .fiber-control-content {
+    padding: 1rem;
+  }
+
+  .fiber-control-container .kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .fiber-control-container .kpi-value {
+    font-size: 1.5rem;
+  }
+
+  .fiber-control-container .card .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .fiber-control-container .card .card-header .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .fiber-control-container .fiber-table {
+    font-size: 0.875rem;
+  }
+
+  .fiber-control-container .fiber-table th,
+  .fiber-control-container .fiber-table td {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .fiber-control-container .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .fiber-control-container .fiber-table {
+    min-width: 1000px;
+  }
+}
+
+@media (max-width: 480px) {
+  .fiber-control-container .header-content h1 {
+    font-size: 1.25rem;
+  }
+
+  .fiber-control-container .kpi-grid .kpi-card {
+    padding: 1rem;
+  }
+
+  .fiber-control-container .kpi-grid .kpi-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .fiber-control-container .kpi-grid .kpi-icon svg {
+    font-size: 1.5rem;
+  }
+
+  .fiber-control-container .kpi-grid .kpi-value {
+    font-size: 1.25rem;
+  }
+}

@@ -25,7 +25,7 @@ export const AppDataSource = new DataSource({
     username: process.env.DB_USERNAME || "u743347598_utassets",
     password: process.env.DB_PASSWORD || "YourStrongPassword123",
     database: process.env.DB_DATABASE || "u743347598_utassets",
-    synchronize: true,
+    synchronize: false, // Desactivado para evitar cambios automáticos en producción
     logging: true,
     entities: [
         path.join(__dirname, '..', 'entity', '*.{ts,js}'),

@@ -21,6 +21,8 @@ import housingRoutes from './routes/HousingRoutes';
 import vacationRoutes from './routes/VacationRoutes';
 import financingRoutes from './routes/FinancingRoutes';
 import paymentRoutes from './routes/PaymentRoutes';
+import fiberControlRoutes from './routes/FiberControlRoutes';
+import holidayRoutes from './routes/holidayRoutes';
 import path from 'path';
 import fs from 'fs';
 
@@ -48,15 +50,33 @@ const createUploadDirectories = () => {
 // Crear directorios
 createUploadDirectories();
 
+const allowedOrigins = [
+    process.env.COSTCONTROL_FRONTEND_URL,
+    process.env.UTASSETS_FRONTEND_URL,
+    process.env.DEVELOPMENT_FRONTEND_URL,
+    'https://utassets.umtelkomd.net',
+    'http://localhost:3000',
+    'http://localhost:3001'
+].filter((url): url is string => typeof url === 'string' && url.length > 0);
+
+console.log('🌐 [CORS] Orígenes permitidos:', allowedOrigins);
+
 app.use(cors({
-    origin: [
-       process.env.COSTCONTROL_FRONTEND_URL,
-        process.env.UTASSETS_FRONTEND_URL
-    ].filter((url): url is string => typeof url === 'string' && url.length > 0),
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true // Habilitar credentials para cookies
 }));
+
+// Middleware para registrar todas las peticiones
+app.use((req, res, next) => {
+    console.log(`📥 [REQUEST] ${req.method} ${req.path} - Origin: ${req.headers.origin || 'No origin'}`);
+    console.log('📋 [REQUEST] Headers:', req.headers);
+    if (req.body && Object.keys(req.body).length > 0) {
+        console.log('📦 [REQUEST] Body:', req.body);
+    }
+    next();
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -102,11 +122,14 @@ app.use('/api/housing', housingRoutes);
 app.use('/api/vacations', vacationRoutes);
 app.use('/api/financings', financingRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/fiber-control', fiberControlRoutes);
+app.use('/api/holidays', holidayRoutes);
 
 // Inicializar la base de datos y el servidor
 AppDataSource.initialize()
-    .then(() => {
+    .then(async () => {
         console.log('Base de datos conectada');
+
         app.listen(PORT, () => {
             console.log(`Servidor corriendo en el puerto ${PORT}`);
         });

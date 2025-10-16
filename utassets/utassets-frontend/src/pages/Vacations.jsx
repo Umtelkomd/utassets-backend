@@ -24,7 +24,9 @@ import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import CancelVacationsModal from "../components/CancelVacationsModal";
 import PendingVacationsManager from "../components/PendingVacationsManager";
 import VacationRequestForm from "../components/VacationRequestForm";
+import HolidayManager from "../components/HolidayManager";
 import { useAuth } from "../context/AuthContext";
+import holidayService from "../services/holidayService";
 import {
   calculateWorkingDays,
   formatDate,
@@ -34,6 +36,7 @@ import {
 const Vacations = () => {
   const { currentUser } = useAuth();
   const [vacations, setVacations] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [users, setUsers] = useState([]);
   const [usersWithDays, setUsersWithDays] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,20 +71,64 @@ const Vacations = () => {
   // Estados para edición de días de vacaciones
   const [editingVacationDays, setEditingVacationDays] = useState(null);
   const [editingDaysValue, setEditingDaysValue] = useState("");
+  const [hasLoadedData, setHasLoadedData] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (currentUser && !hasLoadedData) {
+      fetchData();
+      setHasLoadedData(true);
+    }
+  }, [currentUser, hasLoadedData]);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      await Promise.all([fetchVacations(), fetchUsers(), fetchUsersWithDays()]);
+      const promises = [fetchVacations(), fetchUsers(), fetchUsersWithDays()];
+
+      // Solo cargar festivos si currentUser está disponible
+      if (currentUser) {
+        promises.push(fetchAllHolidays());
+      }
+
+      await Promise.all(promises);
     } catch (error) {
       console.error("Error al cargar datos:", error);
       toast.error("Error al cargar los datos de vacaciones");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchAllHolidays = async () => {
+    try {
+      // Si es técnico, solo cargar sus propios festivos
+      if (currentUser?.role === "tecnico") {
+        const userHolidays = await holidayService.getHolidaysByUser(
+          currentUser.id,
+        );
+        setHolidays(userHolidays);
+      } else {
+        // Si es administrador, cargar festivos de todos los usuarios
+        const allHolidays = [];
+        const usersResponse = await axiosInstance.get("/users");
+        for (const user of usersResponse.data) {
+          try {
+            const userHolidays = await holidayService.getHolidaysByUser(
+              user.id,
+            );
+            allHolidays.push(...userHolidays);
+          } catch (err) {
+            console.error(
+              `Error al cargar festivos del usuario ${user.id}:`,
+              err,
+            );
+          }
+        }
+        setHolidays(allHolidays);
+      }
+    } catch (error) {
+      console.error("Error al cargar festivos:", error);
+      setHolidays([]);
     }
   };
 
@@ -410,6 +457,13 @@ const Vacations = () => {
             <PendingIcon />
             Solicitudes Pendientes
           </button>
+          <button
+            className={`tab-button ${activeTab === "holidays" ? "active" : ""}`}
+            onClick={() => setActiveTab("holidays")}
+          >
+            <CalendarIcon />
+            Festivos
+          </button>
         </div>
       )}
 
@@ -429,6 +483,7 @@ const Vacations = () => {
             </p>
             <VacationCalendar
               vacations={vacations}
+              holidays={holidays}
               onDateClick={handleDateClick}
               onVacationClick={handleVacationClick}
             />
@@ -903,6 +958,11 @@ const Vacations = () => {
         <PendingVacationsManager onUpdate={fetchData} />
       )}
 
+      {/* Gestión de Festivos */}
+      {currentUser?.role === "administrador" && activeTab === "holidays" && (
+        <HolidayManager users={users} onUpdate={fetchAllHolidays} />
+      )}
+
       {/* Vista para técnicos - Solo calendario personal */}
       {currentUser?.role === "tecnico" && (
         <div className="calendar-section">
@@ -914,8 +974,33 @@ const Vacations = () => {
             Consulta el estado de tus solicitudes de vacaciones. Las solicitudes
             aprobadas aparecen en el calendario.
           </p>
+          {/* Debug info temporalmente visible */}
+          {holidays.length > 0 && (
+            <div
+              style={{
+                padding: "10px",
+                background: "#fff3cd",
+                border: "1px solid #ffc107",
+                borderRadius: "4px",
+                marginBottom: "10px",
+              }}
+            >
+              <strong>Debug - Festivos cargados:</strong> {holidays.length}{" "}
+              total,{" "}
+              {holidays.filter((h) => h.userId === currentUser.id).length} para
+              este técnico
+              <br />
+              <small>
+                IDs de festivos:{" "}
+                {holidays
+                  .map((h) => `${h.id} (userId: ${h.userId})`)
+                  .join(", ")}
+              </small>
+            </div>
+          )}
           <VacationCalendar
             vacations={vacations.filter((v) => v.userId === currentUser.id)}
+            holidays={holidays.filter((h) => h.userId === currentUser.id)}
             isPersonal={true}
             showOnlyOwnVacations={true}
             currentUserId={currentUser.id}

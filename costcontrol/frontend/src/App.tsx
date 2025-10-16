@@ -26,25 +26,6 @@ function App() {
   const checkAuthStatus = async () => {
     try {
       console.log('🚀 [App.tsx] Iniciando verificación de autenticación...');
-      
-      // Verificar si estamos en modo desarrollo y omitir autenticación
-      const skipAuth = import.meta.env.VITE_SKIP_AUTH === 'true';
-      const devMode = import.meta.env.VITE_DEV_MODE === 'true';
-      
-      if (skipAuth && devMode) {
-        console.log('🔧 [App.tsx] Modo desarrollo detectado, omitiendo autenticación...');
-        // Crear usuario de desarrollo mock
-        const devUser: User = {
-          id: 1,
-          name: 'Usuario Desarrollo',
-          email: 'dev@costcontrol.com',
-          role: 'admin'
-        };
-        setUser(devUser);
-        setLoading(false);
-        return;
-      }
-      
       const savedToken = localStorage.getItem('authToken');
       const savedUser = localStorage.getItem('user');
 

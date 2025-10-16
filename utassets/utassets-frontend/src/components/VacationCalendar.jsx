@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from "react";
 import "./VacationCalendar.css";
-import { calculateWorkingDays } from "../utils/dateUtils";
+import { calculateWorkingDays, isHalfWorkDay } from "../utils/dateUtils";
 
 // Iconos para los diferentes tipos de vacaciones
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import WorkIcon from "@mui/icons-material/Work";
+import EventIcon from "@mui/icons-material/Event";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import PersonIcon from "@mui/icons-material/Person";
 
 const VacationCalendar = ({
   vacations = [],
+  holidays = [],
   onDateClick,
   onVacationClick,
   isPersonal = false,
@@ -99,6 +101,44 @@ const VacationCalendar = ({
     return checkDate >= startDate && checkDate <= endDate;
   };
 
+  // Verificar si una fecha es festivo
+  const isHoliday = (date) => {
+    if (!holidays || holidays.length === 0) return false;
+
+    // Normalizar la fecha a comparar
+    const checkDate = new Date(date);
+    const checkDateStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, "0")}-${String(checkDate.getDate()).padStart(2, "0")}`;
+
+    return holidays.some((holiday) => {
+      if (!holiday || !holiday.date) return false;
+
+      // Normalizar la fecha del festivo
+      const holidayDate = new Date(holiday.date);
+      const holidayDateStr = `${holidayDate.getFullYear()}-${String(holidayDate.getMonth() + 1).padStart(2, "0")}-${String(holidayDate.getDate()).padStart(2, "0")}`;
+
+      return checkDateStr === holidayDateStr;
+    });
+  };
+
+  // Obtener festivo de una fecha
+  const getHolidayForDate = (date) => {
+    if (!holidays || holidays.length === 0) return null;
+
+    // Normalizar la fecha a comparar
+    const checkDate = new Date(date);
+    const checkDateStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, "0")}-${String(checkDate.getDate()).padStart(2, "0")}`;
+
+    return holidays.find((holiday) => {
+      if (!holiday || !holiday.date) return false;
+
+      // Normalizar la fecha del festivo
+      const holidayDate = new Date(holiday.date);
+      const holidayDateStr = `${holidayDate.getFullYear()}-${String(holidayDate.getMonth() + 1).padStart(2, "0")}-${String(holidayDate.getDate()).padStart(2, "0")}`;
+
+      return checkDateStr === holidayDateStr;
+    });
+  };
+
   // Navegación del calendario
   const goToPreviousMonth = () => {
     setCurrentDate(
@@ -157,6 +197,9 @@ const VacationCalendar = ({
         date: currentDay,
         isCurrentMonth: true,
         vacations: dayVacations,
+        isHoliday: isHoliday(currentDay),
+        holiday: getHolidayForDate(currentDay),
+        isHalfDay: isHalfWorkDay(currentDay),
       });
     }
 
@@ -299,6 +342,10 @@ const VacationCalendar = ({
             <div className="vacation-calendar-legend-bubble vacation-calendar-extra-work"></div>
             <span>Día extra trabajado</span>
           </div>
+          <div className="vacation-calendar-legend-item">
+            <div className="vacation-calendar-legend-bubble vacation-calendar-holiday"></div>
+            <span>Día festivo</span>
+          </div>
         </div>
       </div>
 
@@ -321,11 +368,29 @@ const VacationCalendar = ({
                 day.date.toDateString() === today.toDateString()
                   ? "vacation-calendar-today"
                   : ""
-              } ${day.isCurrentMonth ? "vacation-calendar-clickable" : ""}`}
+              } ${day.isCurrentMonth ? "vacation-calendar-clickable" : ""} ${
+                day.isHoliday ? "vacation-calendar-day-holiday" : ""
+              } ${day.isHalfDay ? "vacation-calendar-day-half" : ""}`}
               onClick={() => handleDayClick(day)}
             >
               <div className="vacation-calendar-day-number">
                 {day.date.getDate()}
+                {day.isHoliday && (
+                  <span
+                    className="vacation-calendar-holiday-indicator"
+                    title={day.holiday?.name}
+                  >
+                    <EventIcon />
+                  </span>
+                )}
+                {day.isHalfDay && !day.isHoliday && (
+                  <span
+                    className="vacation-calendar-half-day-badge"
+                    title="Medio día laboral (24 o 31 de diciembre)"
+                  >
+                    ½
+                  </span>
+                )}
               </div>
 
               {day.vacations.length > 0 && (

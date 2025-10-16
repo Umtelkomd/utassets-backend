@@ -4,7 +4,8 @@ import { User } from '../entity/User';
 import { AppDataSource } from '../config/data-source';
 import { Between, In } from 'typeorm';
 import { slackNotificationService } from '../services/SlackNotificationService';
-import { calculateWorkingDays, calculateSaturdays, isSaturday } from '../utils/dateUtils';
+import { calculateWorkingDays, calculateWorkingDaysExcluding, calculateSaturdays, isSaturday } from '../utils/dateUtils';
+import { HolidayRepository } from '../repositories/HolidayRepository';
 
 export class VacationController {
     private vacationRepository = AppDataSource.getRepository(Vacation);
@@ -323,12 +324,20 @@ export class VacationController {
 
             // Validar días disponibles solo para días de descanso
             if (type === VacationType.REST_DAY) {
-                const requestedDays = calculateWorkingDays(startDate, finalEndDate);
+                // Obtener festivos del usuario en el rango de fechas
+                const holidays = await HolidayRepository.findByUserIdAndDateRange(
+                    parseInt(userId),
+                    startDate,
+                    finalEndDate
+                );
+                const holidayDates = holidays.map((h: { date: Date }) => h.date);
+
+                const requestedDays = calculateWorkingDaysExcluding(startDate, finalEndDate, holidayDates);
 
                 // Validar que el número de días solicitados sea razonable
                 if (requestedDays === 0) {
                     return res.status(400).json({
-                        message: `El rango de fechas seleccionado no incluye días laborales. Por favor, selecciona un período que contenga al menos un día hábil (lunes a viernes).`
+                        message: `El rango de fechas seleccionado no incluye días laborales. Por favor, selecciona un período que contenga al menos un día hábil (lunes a viernes) que no sea festivo.`
                     });
                 }
                 
@@ -472,8 +481,14 @@ export class VacationController {
                 // Para días extra, contar solo los sábados
                 workingDays = calculateSaturdays(startDate, finalEndDate);
             } else {
-                // Para días de descanso, usar días laborales normales
-                workingDays = calculateWorkingDays(startDate, finalEndDate);
+                // Para días de descanso, excluir festivos del cálculo
+                const holidays = await HolidayRepository.findByUserIdAndDateRange(
+                    parseInt(userId),
+                    startDate,
+                    finalEndDate
+                );
+                const holidayDates = holidays.map((h: { date: Date }) => h.date);
+                workingDays = calculateWorkingDaysExcluding(startDate, finalEndDate, holidayDates);
             }
 
             // Crear la vacación
