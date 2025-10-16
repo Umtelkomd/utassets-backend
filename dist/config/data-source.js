@@ -22,6 +22,13 @@ const Housing_1 = require("../entity/Housing");
 const Vacation_1 = require("../entity/Vacation");
 const Financing_1 = require("../entity/Financing");
 const Payment_1 = require("../entity/Payment");
+const FiberActivity_1 = require("../entity/FiberActivity");
+const FiberEquipment_1 = require("../entity/FiberEquipment");
+const FiberMaterial_1 = require("../entity/FiberMaterial");
+const FiberSettings_1 = require("../entity/FiberSettings");
+const FiberSubcontractor_1 = require("../entity/FiberSubcontractor");
+const FiberTechnician_1 = require("../entity/FiberTechnician");
+const FiberWorkOrder_1 = require("../entity/FiberWorkOrder");
 const path_1 = __importDefault(require("path"));
 exports.AppDataSource = new typeorm_1.DataSource({
     type: "mysql",
@@ -30,7 +37,7 @@ exports.AppDataSource = new typeorm_1.DataSource({
     username: process.env.DB_USERNAME || "u743347598_utassets",
     password: process.env.DB_PASSWORD || "YourStrongPassword123",
     database: process.env.DB_DATABASE || "u743347598_utassets",
-    synchronize: true,
+    synchronize: true, // Activado para sincronizar automáticamente las entidades
     logging: true,
     entities: [
         path_1.default.join(__dirname, '..', 'entity', '*.{ts,js}'),
@@ -48,7 +55,14 @@ exports.AppDataSource = new typeorm_1.DataSource({
         Housing_1.Housing,
         Vacation_1.Vacation,
         Financing_1.Financing,
-        Payment_1.Payment
+        Payment_1.Payment,
+        FiberActivity_1.FiberActivity,
+        FiberEquipment_1.FiberEquipment,
+        FiberMaterial_1.FiberMaterial,
+        FiberSettings_1.FiberSettings,
+        FiberSubcontractor_1.FiberSubcontractor,
+        FiberTechnician_1.FiberTechnician,
+        FiberWorkOrder_1.FiberWorkOrder
     ],
     migrations: [path_1.default.join(__dirname, '..', 'migration', '*.{ts,js}')],
     subscribers: [],

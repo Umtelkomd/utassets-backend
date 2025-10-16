@@ -16,6 +16,13 @@ import { Housing } from '../entity/Housing';
 import { Vacation } from '../entity/Vacation';
 import { Financing } from '../entity/Financing';
 import { Payment } from '../entity/Payment';
+import { FiberActivity } from '../entity/FiberActivity';
+import { FiberEquipment } from '../entity/FiberEquipment';
+import { FiberMaterial } from '../entity/FiberMaterial';
+import { FiberSettings } from '../entity/FiberSettings';
+import { FiberSubcontractor } from '../entity/FiberSubcontractor';
+import { FiberTechnician } from '../entity/FiberTechnician';
+import { FiberWorkOrder } from '../entity/FiberWorkOrder';
 import path from 'path';
 
 export const AppDataSource = new DataSource({
@@ -25,7 +32,7 @@ export const AppDataSource = new DataSource({
     username: process.env.DB_USERNAME || "u743347598_utassets",
     password: process.env.DB_PASSWORD || "YourStrongPassword123",
     database: process.env.DB_DATABASE || "u743347598_utassets",
-    synchronize: false, // Desactivado para evitar cambios automáticos en producción
+    synchronize: true, // Activado para sincronizar automáticamente las entidades
     logging: true,
     entities: [
         path.join(__dirname, '..', 'entity', '*.{ts,js}'),
@@ -43,7 +50,14 @@ export const AppDataSource = new DataSource({
         Housing,
         Vacation,
         Financing,
-        Payment
+        Payment,
+        FiberActivity,
+        FiberEquipment,
+        FiberMaterial,
+        FiberSettings,
+        FiberSubcontractor,
+        FiberTechnician,
+        FiberWorkOrder
     ],
     migrations: [path.join(__dirname, '..', 'migration', '*.{ts,js}')],
     subscribers: [],
