@@ -107,6 +107,8 @@ const Navbar = () => {
         {/* Menú desplegable de Activos */}
         <div
           className={`navbar-dropdown ${isActive("/vehicles") || isActive("/inventory") ? "active" : ""}`}
+          onMouseEnter={() => setAssetsMenuOpen(true)}
+          onMouseLeave={() => setAssetsMenuOpen(false)}
         >
           <div
             className="navbar-dropdown-trigger"
@@ -170,6 +172,8 @@ const Navbar = () => {
           hasPermission("canManageVacations")) && (
           <div
             className={`navbar-dropdown ${isActive("/users") || isActive("/vacations") ? "active" : ""}`}
+            onMouseEnter={() => setHrMenuOpen(true)}
+            onMouseLeave={() => setHrMenuOpen(false)}
           >
             <div
               className="navbar-dropdown-trigger"
@@ -230,6 +234,8 @@ const Navbar = () => {
         {hasPermission("canAccessSettings") && (
           <div
             className={`navbar-dropdown ${isActive("/financings") || isActive("/projects") ? "active" : ""}`}
+            onMouseEnter={() => setServicesMenuOpen(true)}
+            onMouseLeave={() => setServicesMenuOpen(false)}
           >
             <div
               className="navbar-dropdown-trigger"
@@ -304,7 +310,11 @@ const Navbar = () => {
       </div>
 
       <div className="navbar-end">
-        <div className="profile-dropdown">
+        <div
+          className="profile-dropdown"
+          onMouseEnter={() => setProfileOpen(true)}
+          onMouseLeave={() => setProfileOpen(false)}
+        >
           <div className="profile-trigger" onClick={toggleProfile}>
             <div className="avatar">
               {currentUser?.photoUrl ? (
